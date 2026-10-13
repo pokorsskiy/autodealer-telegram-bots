@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import io
 import json
-import os
 import sqlite3
 import tempfile
 import time
@@ -17,18 +16,21 @@ from urllib.parse import urlencode
 
 from werkzeug.security import generate_password_hash
 
-import database as database_module
+import config as config_module
 
 # server.py при импорте создаёт таблицы и учётные записи из .env. Базу
 # подменяем до импорта, иначе тесты писали бы в рабочую базу.
-_IMPORT_DB_DIR = tempfile.TemporaryDirectory()
-database_module.DB_NAME = str(Path(_IMPORT_DB_DIR.name) / "import.db")
-
-os.environ.setdefault("SHOWCASE_WEBAPP_DEMO_MODE", "0")
-import server as server_module  # noqa: E402
-
 # Тесты по умолчанию проверяют рабочую витрину, демо — в DemoModeTest.
-server_module.DEMO_MODE = False
+_IMPORT_DB_DIR = tempfile.TemporaryDirectory()
+config_module.DB_NAME = str(Path(_IMPORT_DB_DIR.name) / "import.db")
+config_module.DEMO_MODE = False
+
+import database as database_module
+import server as server_module
+from webapp import auth as auth_module
+from webapp import demo as demo_module
+from webapp import notifications as notifications_module
+from webapp import public as public_module
 
 
 class AdminServerTest(unittest.TestCase):
@@ -36,14 +38,14 @@ class AdminServerTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         temp_path = Path(self.temp_dir.name)
         self.db_patcher = patch.object(
-            database_module, "DB_NAME", str(temp_path / "test.db")
+            config_module, "DB_NAME", str(temp_path / "test.db")
         )
         self.upload_patcher = patch.object(
-            server_module, "UPLOAD_DIR", temp_path / "uploads"
+            config_module, "UPLOAD_DIR", temp_path / "uploads"
         )
         self.db_patcher.start()
         self.upload_patcher.start()
-        server_module.UPLOAD_DIR.mkdir()
+        config_module.UPLOAD_DIR.mkdir()
         database_module.init_db()
         database_module.create_initial_owner(
             "owner", generate_password_hash("very-long-test-password")
@@ -67,13 +69,13 @@ class AdminServerTest(unittest.TestCase):
     def test_old_demo_photo_links_become_local(self) -> None:
         """Демо-фото из старых баз переезжают с чужих сайтов в web/demo/."""
         old_url, new_url = next(iter(database_module.DEMO_IMAGE_MOVES.items()))
-        with closing(sqlite3.connect(database_module.DB_NAME)) as connection, connection:
+        with closing(sqlite3.connect(config_module.DB_NAME)) as connection, connection:
             connection.execute("UPDATE car_images SET url = ?", (old_url,))
         database_module.init_db()
-        with closing(sqlite3.connect(database_module.DB_NAME)) as connection:
+        with closing(sqlite3.connect(config_module.DB_NAME)) as connection:
             urls = {row[0] for row in connection.execute("SELECT url FROM car_images")}
         self.assertEqual(urls, {new_url})
-        self.assertTrue((server_module.WEB_DIR / new_url.lstrip("/")).exists())
+        self.assertTrue((public_module.WEB_DIR / new_url.lstrip("/")).exists())
 
     def test_public_catalog_does_not_return_hidden_car(self) -> None:
         car = database_module.get_car("toyota-camry-2024")
@@ -111,12 +113,12 @@ class AdminServerTest(unittest.TestCase):
         self.assertTrue(response.headers["Location"].endswith("/admin"))
 
     def test_login_explains_when_owner_is_not_created(self) -> None:
-        with closing(sqlite3.connect(database_module.DB_NAME)) as connection:
+        with closing(sqlite3.connect(config_module.DB_NAME)) as connection:
             with connection:
                 connection.execute("DELETE FROM admin_users")
         with (
-            patch.object(server_module, "ADMIN_USERNAME", "owner"),
-            patch.object(server_module, "ADMIN_PASSWORD", "short"),
+            patch.object(config_module, "ADMIN_USERNAME", "owner"),
+            patch.object(config_module, "ADMIN_PASSWORD", "short"),
         ):
             response = self.client.get("/admin/login")
         self.assertEqual(response.status_code, 200)
@@ -187,7 +189,7 @@ class AdminServerTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201)
         body = response.get_json()
-        uploaded = server_module.UPLOAD_DIR / Path(body["url"]).name
+        uploaded = config_module.UPLOAD_DIR / Path(body["url"]).name
         self.assertTrue(uploaded.exists())
 
         deleted = self.client.delete(
@@ -212,7 +214,7 @@ class LegalPagesTest(unittest.TestCase):
         self.client = server_module.app.test_client()
 
     def test_demo_shows_sample(self) -> None:
-        with patch.object(server_module, "DEMO_MODE", True):
+        with patch.object(config_module, "DEMO_MODE", True):
             for path in ("/privacy", "/consent"):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
@@ -220,9 +222,9 @@ class LegalPagesTest(unittest.TestCase):
 
     def test_working_site_shows_customer_details(self) -> None:
         with (
-            patch.object(server_module, "DEMO_MODE", False),
-            patch.object(server_module, "LEGAL", self.LEGAL),
-            patch.object(server_module, "LEGAL_MISSING", []),
+            patch.object(config_module, "DEMO_MODE", False),
+            patch.object(config_module, "LEGAL", self.LEGAL),
+            patch.object(config_module, "LEGAL_MISSING", []),
         ):
             for path in ("/privacy", "/consent"):
                 page = self.client.get(path).get_data(as_text=True)
@@ -232,8 +234,8 @@ class LegalPagesTest(unittest.TestCase):
 
     def test_working_site_without_details_hides_pages(self) -> None:
         with (
-            patch.object(server_module, "DEMO_MODE", False),
-            patch.object(server_module, "LEGAL_MISSING", ["operator"]),
+            patch.object(config_module, "DEMO_MODE", False),
+            patch.object(config_module, "LEGAL_MISSING", ["operator"]),
         ):
             self.assertEqual(self.client.get("/privacy").status_code, 404)
             self.assertEqual(self.client.get("/consent").status_code, 404)
@@ -254,7 +256,7 @@ class PublicLeadTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.client = server_module.app.test_client()
-        server_module.lead_attempts.clear()
+        public_module.lead_attempts.clear()
 
     def _payload(self, **overrides):
         payload = {
@@ -272,8 +274,8 @@ class PublicLeadTest(unittest.TestCase):
 
     def test_valid_lead_is_saved_and_sent(self) -> None:
         with (
-            patch.object(server_module, "save_lead", return_value=77) as save,
-            patch.object(server_module, "_notify_lead", return_value=True) as notify,
+            patch.object(public_module, "save_lead", return_value=77) as save,
+            patch.object(public_module, "notify_lead", return_value=True) as notify,
         ):
             response = self.client.post("/api/leads", json=self._payload())
         self.assertEqual(response.status_code, 200)
@@ -282,7 +284,7 @@ class PublicLeadTest(unittest.TestCase):
         notify.assert_called_once()
 
     def test_short_phone_is_rejected(self) -> None:
-        with patch.object(server_module, "save_lead") as save:
+        with patch.object(public_module, "save_lead") as save:
             response = self.client.post("/api/leads", json=self._payload(phone="123"))
         self.assertEqual(response.status_code, 400)
         save.assert_not_called()
@@ -290,7 +292,7 @@ class PublicLeadTest(unittest.TestCase):
     def test_lead_without_consent_is_rejected(self) -> None:
         """Без согласия на обработку персональных данных заявку не сохраняем."""
         for consent in ("", "0", None):
-            with patch.object(server_module, "save_lead") as save:
+            with patch.object(public_module, "save_lead") as save:
                 response = self.client.post("/api/leads", json=self._payload(consent=consent))
             self.assertEqual(response.status_code, 400)
             self.assertIn("согласие", response.get_json()["error"])
@@ -298,10 +300,10 @@ class PublicLeadTest(unittest.TestCase):
 
     def test_flood_is_limited(self) -> None:
         with (
-            patch.object(server_module, "save_lead", return_value=1),
-            patch.object(server_module, "_notify_lead", return_value=True),
+            patch.object(public_module, "save_lead", return_value=1),
+            patch.object(public_module, "notify_lead", return_value=True),
         ):
-            for _ in range(server_module.LEAD_MAX_PER_WINDOW):
+            for _ in range(public_module.LEAD_MAX_PER_WINDOW):
                 self.client.post("/api/leads", json=self._payload())
             response = self.client.post("/api/leads", json=self._payload())
         self.assertEqual(response.status_code, 429)
@@ -309,8 +311,8 @@ class PublicLeadTest(unittest.TestCase):
     def test_undelivered_lead_is_still_accepted(self) -> None:
         """Telegram может быть недоступен: заявку всё равно не теряем."""
         with (
-            patch.object(server_module, "save_lead", return_value=5),
-            patch.object(server_module, "_notify_lead", return_value=False),
+            patch.object(public_module, "save_lead", return_value=5),
+            patch.object(public_module, "notify_lead", return_value=False),
         ):
             response = self.client.post("/api/leads", json=self._payload())
         self.assertEqual(response.status_code, 200)
@@ -319,13 +321,13 @@ class PublicLeadTest(unittest.TestCase):
     def test_lead_is_sent_to_main_and_extra_bots(self) -> None:
         """Заявка с сайта приходит и в основной бот, и в гибрид."""
         with (
-            patch.object(server_module, "TOKEN", "111:main-token"),
-            patch.object(server_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"]),
-            patch.object(server_module, "YOUR_CHAT_ID", 555),
-            patch.object(server_module.requests, "post") as post,
+            patch.object(config_module, "TOKEN", "111:main-token"),
+            patch.object(config_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"]),
+            patch.object(config_module, "YOUR_CHAT_ID", 555),
+            patch.object(notifications_module.requests, "post") as post,
         ):
             post.return_value.status_code = 200
-            delivered = server_module._notify_lead(7, self._payload())
+            delivered = notifications_module.notify_lead(7, self._payload())
         self.assertTrue(delivered)
         main_call, hybrid_call = post.call_args_list
         self.assertIn("bot111:main-token/", main_call.args[0])
@@ -338,15 +340,15 @@ class PublicLeadTest(unittest.TestCase):
     def test_notice_without_contacts_keeps_personal_data_out_of_telegram(self) -> None:
         """LEAD_NOTIFY_CONTACTS=0: в Telegram ни имени, ни телефона, есть кнопка админки."""
         with (
-            patch.object(server_module, "TOKEN", "111:main-token"),
-            patch.object(server_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"]),
-            patch.object(server_module, "YOUR_CHAT_ID", 555),
-            patch.object(server_module, "LEAD_NOTIFY_CONTACTS", False),
-            patch.object(server_module, "ADMIN_WEB_APP_URL", "https://acme.example.com/admin/tg"),
-            patch.object(server_module.requests, "post") as post,
+            patch.object(config_module, "TOKEN", "111:main-token"),
+            patch.object(config_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"]),
+            patch.object(config_module, "YOUR_CHAT_ID", 555),
+            patch.object(config_module, "LEAD_NOTIFY_CONTACTS", False),
+            patch.object(config_module, "ADMIN_WEB_APP_URL", "https://acme.example.com/admin/tg"),
+            patch.object(notifications_module.requests, "post") as post,
         ):
             post.return_value.status_code = 200
-            delivered = server_module._notify_lead(
+            delivered = notifications_module.notify_lead(
                 7, self._payload(comment="Позвоните Ивану"),
                 {"id": 101, "first_name": "Иван", "username": "ivan"},
             )
@@ -369,10 +371,10 @@ class PublicLeadTest(unittest.TestCase):
     def test_notice_to_group_opens_admin_by_link(self) -> None:
         """В группе Web App-кнопки запрещены: админка открывается обычной ссылкой."""
         with (
-            patch.object(server_module, "YOUR_CHAT_ID", -100500),
-            patch.object(server_module, "ADMIN_WEB_APP_URL", "https://acme.example.com/admin/tg"),
+            patch.object(config_module, "YOUR_CHAT_ID", -100500),
+            patch.object(config_module, "ADMIN_WEB_APP_URL", "https://acme.example.com/admin/tg"),
         ):
-            button = server_module._admin_button()
+            button = notifications_module.admin_button()
         self.assertEqual(button["url"], "https://acme.example.com/admin")
 
     def test_admin_leads_require_login(self) -> None:
@@ -384,15 +386,15 @@ class DemoModeTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.client = server_module.app.test_client()
-        server_module.lead_attempts.clear()
-        demo_patch = patch.object(server_module, "DEMO_MODE", True)
+        public_module.lead_attempts.clear()
+        demo_patch = patch.object(config_module, "DEMO_MODE", True)
         demo_patch.start()
         self.addCleanup(demo_patch.stop)
 
     def test_site_reports_demo_and_owner(self) -> None:
         with (
-            patch.object(server_module, "SITE_OWNER", "Иванов Иван"),
-            patch.object(server_module, "SITE_EMAIL", "owner@example.com"),
+            patch.object(config_module, "SITE_OWNER", "Иванов Иван"),
+            patch.object(config_module, "SITE_EMAIL", "owner@example.com"),
         ):
             data = self.client.get("/api/site").get_json()
         self.assertEqual(
@@ -408,12 +410,12 @@ class DemoModeTest(unittest.TestCase):
                 encoding="utf-8",
             )
             (demo_dir / "car.jpg").write_bytes(b"\xff\xd8\xff")
-            with patch.object(server_module, "DEMOS_DIR", Path(temp_dir)):
+            with patch.object(demo_module, "DEMOS_DIR", Path(temp_dir)):
                 demo = self.client.get("/api/demos/avtoyug")
                 image = self.client.get("/demos/avtoyug/car.jpg")
                 missing = self.client.get("/api/demos/nobody")
                 bad_slug = self.client.get("/api/demos/Avto_Yug")
-                with patch.object(server_module, "DEMO_MODE", False):
+                with patch.object(config_module, "DEMO_MODE", False):
                     working_site = self.client.get("/api/demos/avtoyug")
             image.close()
         self.assertEqual(demo.get_json()["brand"], "АвтоЮг")
@@ -432,11 +434,11 @@ class DemoModeTest(unittest.TestCase):
             encoding="utf-8",
         )
         stack = ExitStack()
-        stack.enter_context(patch.object(server_module, "DEMOS_DIR", Path(temp_dir) / "demos"))
+        stack.enter_context(patch.object(demo_module, "DEMOS_DIR", Path(temp_dir) / "demos"))
         stack.enter_context(
-            patch.object(server_module, "DEMO_SANDBOX_DIR", Path(temp_dir) / "boxes")
+            patch.object(demo_module, "DEMO_SANDBOX_DIR", Path(temp_dir) / "boxes")
         )
-        server_module.demo_sandbox_writes.clear()
+        demo_module.demo_sandbox_writes.clear()
         return stack
 
     def test_sandbox_changes_are_seen_only_by_their_owner(self) -> None:
@@ -485,7 +487,7 @@ class DemoModeTest(unittest.TestCase):
         car = {"id": "kia-k5", "brand": "Kia", "model": "K5", "location": "port"}
         with (
             tempfile.TemporaryDirectory() as temp_dir, self._sandbox_demo(temp_dir),
-            patch.object(server_module, "TOKEN", "123:demo-token"),
+            patch.object(config_module, "TOKEN", "123:demo-token"),
         ):
             admin = server_module.app.test_client()
             catalog = server_module.app.test_client()
@@ -510,7 +512,7 @@ class DemoModeTest(unittest.TestCase):
 
     def test_sandbox_is_closed_outside_demo_mode(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir, self._sandbox_demo(temp_dir):
-            with patch.object(server_module, "DEMO_MODE", False):
+            with patch.object(config_module, "DEMO_MODE", False):
                 write = self.client.put("/api/demos/acme/sandbox", json={"cars": []})
         self.assertEqual(write.status_code, 404)
 
@@ -523,7 +525,7 @@ class DemoModeTest(unittest.TestCase):
         # Страница не открывает сессию: настоящая админка по-прежнему закрыта.
         self.assertEqual(self.client.get("/api/admin/cars").status_code, 401)
         self.assertEqual(self.client.get("/admin").status_code, 302)
-        with patch.object(server_module, "DEMO_MODE", False):
+        with patch.object(config_module, "DEMO_MODE", False):
             self.assertEqual(self.client.get("/admin/demo").status_code, 404)
 
     def test_leads_are_refused_without_saving(self) -> None:
@@ -533,8 +535,8 @@ class DemoModeTest(unittest.TestCase):
             "comment": "", "lead_type": "car", "consent": "1", "car_id": "toyota-camry-2024",
         }
         with (
-            patch.object(server_module, "save_lead") as save,
-            patch.object(server_module, "_notify_lead") as notify,
+            patch.object(public_module, "save_lead") as save,
+            patch.object(public_module, "notify_lead") as notify,
         ):
             site = self.client.post("/api/leads", json=payload)
             bot = self.client.post("/api/bot/leads", json={"lead": payload})
@@ -549,8 +551,8 @@ class TelegramLeadTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.client = server_module.app.test_client()
-        server_module.lead_attempts.clear()
-        token_patch = patch.object(server_module, "TOKEN", "111:main-token")
+        public_module.lead_attempts.clear()
+        token_patch = patch.object(config_module, "TOKEN", "111:main-token")
         token_patch.start()
         self.addCleanup(token_patch.stop)
 
@@ -562,8 +564,8 @@ class TelegramLeadTest(unittest.TestCase):
             "init_data": init_data,
         }
         with (
-            patch.object(server_module, "save_lead", return_value=78) as save,
-            patch.object(server_module, "_notify_lead", return_value=True) as notify,
+            patch.object(public_module, "save_lead", return_value=78) as save,
+            patch.object(public_module, "notify_lead", return_value=True) as notify,
         ):
             response = self.client.post("/api/leads", json=payload)
         return response, save, notify
@@ -589,7 +591,7 @@ class LeadWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         temp_path = Path(self.temp_dir.name)
-        self.db_patch = patch.object(database_module, "DB_NAME", str(temp_path / "test.db"))
+        self.db_patch = patch.object(config_module, "DB_NAME", str(temp_path / "test.db"))
         self.db_patch.start()
         self.addCleanup(self.db_patch.stop)
         self.addCleanup(self.temp_dir.cleanup)
@@ -808,7 +810,7 @@ class TelegramLoginTest(unittest.TestCase):
     def setUp(self) -> None:
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
-        db_patch = patch.object(database_module, "DB_NAME", str(Path(temp_dir.name) / "test.db"))
+        db_patch = patch.object(config_module, "DB_NAME", str(Path(temp_dir.name) / "test.db"))
         db_patch.start()
         self.addCleanup(db_patch.stop)
         database_module.init_db()
@@ -817,13 +819,13 @@ class TelegramLoginTest(unittest.TestCase):
             TESTING=True, SECRET_KEY="test-secret", SESSION_COOKIE_SECURE=False
         )
         self.client = server_module.app.test_client()
-        server_module.login_attempts.clear()
+        auth_module.login_attempts.clear()
         for name, value in {
             "TOKEN": "111:main-token",
             "ADMIN_EXTRA_BOT_TOKENS": ["222:hybrid-token"],
             "TELEGRAM_ADMINS": {555: "owner"},
         }.items():
-            patcher = patch.object(server_module, name, value)
+            patcher = patch.object(config_module, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
         with self.client.session_transaction() as session:
@@ -857,7 +859,7 @@ class TelegramLoginTest(unittest.TestCase):
         }
         for name, init_data in cases.items():
             with self.subTest(name):
-                server_module.login_attempts.clear()
+                auth_module.login_attempts.clear()
                 self.assertEqual(self.telegram_login(init_data).status_code, 403)
         self.assertEqual(self.client.get("/api/admin/session").status_code, 401)
 
@@ -882,11 +884,11 @@ class BotLeadTest(unittest.TestCase):
     def setUp(self) -> None:
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
-        db_patch = patch.object(database_module, "DB_NAME", str(Path(temp_dir.name) / "test.db"))
+        db_patch = patch.object(config_module, "DB_NAME", str(Path(temp_dir.name) / "test.db"))
         db_patch.start()
         self.addCleanup(db_patch.stop)
         database_module.init_db()
-        tokens_patch = patch.object(server_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"])
+        tokens_patch = patch.object(config_module, "ADMIN_EXTRA_BOT_TOKENS", ["222:hybrid-token"])
         tokens_patch.start()
         self.addCleanup(tokens_patch.stop)
         self.client = server_module.app.test_client()
@@ -912,7 +914,7 @@ class BotLeadTest(unittest.TestCase):
         )
 
     def test_signed_lead_is_saved_without_second_notification(self) -> None:
-        with patch.object(server_module, "_notify_lead") as notify:
+        with patch.object(public_module, "notify_lead") as notify:
             response = self.send()
         self.assertEqual(response.status_code, 200)
         lead = database_module.get_lead(response.get_json()["lead_id"])

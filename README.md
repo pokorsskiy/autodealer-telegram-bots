@@ -34,7 +34,7 @@ Telegram ◄─ polling ─┼─ showcase_telegram_bot ── калькуля�
                      ├─ showcase_hybrid_bot ──┐
                      └─ showcase_webapp_bot   │ HTTP, подпись HMAC
                                 │             ▼
-браузер / Web App ─ nginx ─ gunicorn ─ Flask (server.py) ─ SQLite, uploads/
+браузер / Web App ─ nginx ─ gunicorn ─ Flask (webapp/) ─ SQLite, uploads/
 ```
 
 - Каждый бот — отдельный сервис со своим `.env`, базой и тестами. Общего пакета нет намеренно:
@@ -46,12 +46,26 @@ Telegram ◄─ polling ─┼─ showcase_telegram_bot ── калькуля�
 
 ## Что внутри интересного
 
-Основной код — [`showcase_webapp_bot/server.py`](showcase_webapp_bot/server.py)
-и [`database.py`](showcase_webapp_bot/database.py).
+Основной код — Web App-бот, [`showcase_webapp_bot/`](showcase_webapp_bot):
+
+```
+server.py             точка входа: gunicorn server:app
+webapp/               Flask-приложение, собирается фабрикой create_app
+  auth.py             сессия, роли, CSRF, подпись Telegram, ограничение попыток входа
+  validation.py       проверка карточки, заявки и загружаемого фото
+  notifications.py    уведомление менеджеру через Bot API
+  public.py           каталог, политика и согласие, приём заявок
+  demo.py             именные демо и песочница
+  admin_pages.py      вход и страницы админки
+  admin_api.py        API админки: заявки, машины, фото, сотрудники
+database/             SQLite: соединение, схема и миграции, заявки, машины, учётные записи
+config.py             настройки из .env — единственное место, откуда их читает код
+```
 
 **Вход по подписи Telegram.** Web App получает от Telegram строку `initData`. Сервер
 пересчитывает её HMAC-SHA256 на ключе, выведенном из токена бота, сравнивает через
-`hmac.compare_digest` и проверяет срок давности — `_telegram_user`. Так сотрудник входит
+`hmac.compare_digest` и проверяет срок давности —
+[`verify_init_data`](showcase_webapp_bot/webapp/auth.py). Так сотрудник входит
 в админку командой `/admin` без пароля, а заявка из каталога привязывается к профилю
 покупателя. Сервер принимает подпись нескольких ботов: в ту же админку входят из гибридного.
 
@@ -64,7 +78,7 @@ CSRF-токен на изменяющих запросах, ограничени
 тело запроса своим токеном (HMAC-SHA256 в заголовке). Если сервер недоступен, покупатель
 этого не замечает: заявка сохранена у бота и ушла менеджеру.
 
-**Миграции SQLite.** `init_db` сверяет колонки таблиц с ожидаемыми, перед изменением схемы
+**Миграции SQLite.** [`init_db`](showcase_webapp_bot/database/schema.py) сверяет колонки таблиц с ожидаемыми, перед изменением схемы
 делает копию файла базы и добавляет недостающее без потери данных.
 
 **Персональные данные.** Заявка принимается только с отметкой согласия, время согласия

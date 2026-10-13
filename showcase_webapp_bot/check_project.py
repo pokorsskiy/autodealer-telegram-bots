@@ -25,10 +25,13 @@ BASE_DIR = Path(__file__).resolve().parent
 PYTHON_FILES = [
     BASE_DIR / "bot.py",
     BASE_DIR / "config.py",
-    BASE_DIR / "database.py",
     BASE_DIR / "keyboards.py",
     BASE_DIR / "logger.py",
     BASE_DIR / "server.py",
+    BASE_DIR / "database" / "__init__.py",
+    BASE_DIR / "webapp" / "__init__.py",
+    *sorted((BASE_DIR / "database").glob("[a-z]*.py")),
+    *sorted((BASE_DIR / "webapp").glob("[a-z]*.py")),
 ]
 WEB_FILES = [
     BASE_DIR / "web" / "index.html",

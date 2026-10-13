@@ -14,5 +14,5 @@ select = ["E", "F", "W", "I", "B", "UP"]
 [tool.ruff.lint.isort]
 # Каждый бот запускается из своей папки, его модули импортируются без пакета.
 known-first-party = [
-    "bot", "calculator", "config", "database", "keyboards", "logger", "server", "texts",
+    "bot", "calculator", "config", "database", "keyboards", "logger", "server", "texts", "webapp",
 ]

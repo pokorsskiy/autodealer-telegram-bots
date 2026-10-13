@@ -1,6 +1,5 @@
 """Проверки Web App-бота без подключения к Telegram."""
 
-import os
 import sqlite3
 import tempfile
 import unittest
@@ -9,16 +8,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-os.environ.setdefault("SHOWCASE_WEBAPP_BOT_TOKEN", "test-token")
-os.environ.setdefault("SHOWCASE_WEB_APP_URL", "https://example.com/webapp")
-os.environ.setdefault("SHOWCASE_WEBAPP_DEMO_MODE", "0")
+import config as config_module
+
+# Настройки задаются до импорта бота: он читает их при загрузке модуля.
+# Тесты по умолчанию проверяют рабочий бот, демо — отдельным тестом.
+config_module.TOKEN = config_module.TOKEN or "test-token"
+config_module.WEB_APP_URL = "https://example.com/webapp"
+config_module.DEMO_MODE = False
 
 import bot as bot_module
 import database as database_module
 import logger as logger_module
-
-# Тесты по умолчанию проверяют рабочий бот, демо — отдельным тестом.
-bot_module.DEMO_MODE = False
 
 
 def user_message(raw_data: str) -> SimpleNamespace:
@@ -295,7 +295,7 @@ class WebAppBotTest(unittest.TestCase):
                         """
                     )
 
-            with patch.object(database_module, "DB_NAME", str(db_path)):
+            with patch.object(config_module, "DB_NAME", str(db_path)):
                 database_module.init_db()
 
             with closing(sqlite3.connect(db_path)) as connection:
