@@ -1,0 +1,383 @@
+/* Шрифт и скрипт Telegram лежат на нашем сервере: Google Fonts и telegram.org
+   у части российских провайдеров не грузятся, и страница висела белой. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("fonts/manrope-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("fonts/manrope-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("fonts/manrope-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --graphite: #17191d;
+  --graphite-2: #22252a;
+  --paper: #f4f3f0;
+  --white: #fff;
+  --ink: #191b1f;
+  --muted: #74777d;
+  --line: #dcdcd9;
+  --coral: #f05a4f;
+  --coral-dark: #d94339;
+  /* Текст на фоне акцента и акцент текстом на светлом: для светлого фирменного
+     цвета (салатовый, жёлтый) демо задаёт их тёмными, см. demo.json → vars. */
+  --on-coral: var(--white);
+  --coral-text: var(--coral);
+  --success: #41a36f;
+
+  /* Оттенки акцента считаются от --coral: фирменный цвет перекрашивает и их. */
+  --coral-soft: color-mix(in srgb, var(--coral) 9%, transparent);
+  --coral-ring: color-mix(in srgb, var(--coral) 18%, transparent);
+  --coral-tint: color-mix(in srgb, var(--coral) 12%, var(--white));
+  --graphite-glass: color-mix(in srgb, var(--graphite) 86%, transparent);
+  --graphite-border: color-mix(in srgb, var(--graphite) 15%, transparent);
+
+  /* Первый экран */
+  --hero-glow: #3b3f46;
+  --hero-top: #24272c;
+  --hero-bottom: #15171a;
+  --hero-card: #25282de8;
+
+  /* Светлые поверхности */
+  --surface-sunken: #e7e6e3;
+  --surface-soft: #f0efec;
+  --surface-readonly: #f7f6f3;
+  --placeholder: #dededa;
+  --dashed: #cacac7;
+  --favorite-bg: #fffef5e8;
+  --heading-soft: #a4a6ab;
+
+  /* Текст и слои на тёмном фоне */
+  --on-dark-text: #b7bac0;
+  --on-dark-muted: #9fa2a8;
+  --on-dark-subtle: #7c7f86;
+  --on-dark-label: #c9cbcf;
+  --glass-1: #ffffff08;
+  --glass-2: #ffffff0d;
+  --glass-3: #ffffff1a;
+  --glass-border: #ffffff17;
+  --glass-border-strong: #ffffff2a;
+  --glass-border-hover: #ffffff4d;
+  --glass-dot: #ffffff8a;
+
+  /* Тени и затемнение под окнами */
+  --shadow-card: #1617190b;
+  --shadow-tab: #2525250c;
+  --shadow-raised: #1617190f;
+  --shadow-panel: #19191912;
+  --shadow-float: #00000055;
+  --shadow-bar: #0000004d;
+  --backdrop: #08090bcc;
+  --backdrop-light: #10121598;
+  color: var(--ink);
+  background: var(--graphite);
+  font-family: "Manrope", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--graphite); }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+img { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
+main { width: min(100%, 840px); margin: 0 auto; background: var(--paper); overflow: hidden; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.eyebrow { margin: 0 0 10px; color: var(--coral-text); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+h1, h2, h3, p { overflow-wrap: anywhere; }
+h1, h2 { margin: 0; letter-spacing: -.055em; line-height: .98; }
+
+.hero {
+  position: relative;
+  padding: max(20px, env(safe-area-inset-top)) 20px 28px;
+  overflow: hidden;
+  color: var(--white);
+  background:
+    radial-gradient(circle at 75% 42%, var(--hero-glow) 0, transparent 38%),
+    linear-gradient(155deg, var(--hero-top) 0%, var(--hero-bottom) 75%);
+}
+.topbar { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; }
+.hero .eyebrow { color: var(--coral); }
+.brand { display: inline-flex; gap: 10px; align-items: center; color: var(--white); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.brand span { display: grid; width: 34px; height: 34px; overflow: hidden; place-items: center; border-radius: 10px; background: var(--coral); color: var(--on-coral); letter-spacing: -.08em; }
+.brand span img, .site-logo { width: 100%; height: 100%; object-fit: cover; }
+.favorite-head { position: relative; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--glass-border-strong); border-radius: 14px; background: var(--glass-2); color: var(--white); }
+.favorite-head span { color: var(--coral); font-size: 19px; }
+.favorite-head b { position: absolute; top: -4px; right: -4px; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 99px; background: var(--white); color: var(--ink); font-size: 10px; line-height: 19px; }
+.hero__copy { position: relative; z-index: 3; max-width: 590px; margin-top: 75px; }
+.hero__copy h1 { max-width: 650px; font-size: clamp(45px, 12vw, 78px); }
+.hero__copy > p:last-child { max-width: 430px; margin: 22px 0 0; color: var(--on-dark-text); font-size: 14px; line-height: 1.6; }
+.location-cards { position: relative; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 44px; }
+.location-cards button { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; min-width: 0; padding: 15px 12px; border: 1px solid var(--glass-border-strong); border-radius: 16px; background: var(--hero-card); color: var(--white); text-align: left; backdrop-filter: blur(16px); }
+/* Значок заполняет квадрат целиком: цветная плашка и белый рисунок. */
+.location-cards__icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: var(--success); color: var(--white); }
+.location-cards__icon svg, .link-card__icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.location-cards__icon--port { background: var(--coral); color: var(--on-coral); }
+.location-cards__icon--order { background: var(--white); color: var(--graphite); }
+.location-cards__order { grid-column: 1 / -1; }
+.location-cards b, .location-cards small { display: block; }
+.location-cards b { font-size: 12px; }
+.location-cards small { margin-top: 3px; color: var(--on-dark-muted); font-size: 8px; line-height: 1.35; }
+.location-cards i { color: var(--coral); font-style: normal; }
+
+.catalog, .calculator, .info { padding: 66px 18px; }
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 27px; }
+.section-head h2, .manager-strip h2, .info > h2, dialog h2 { font-size: clamp(34px, 8vw, 54px); }
+/* Размер заголовков прежний, но громко звучит только главное слово. */
+.section-head h2 span, .manager-strip h2 span { color: var(--heading-soft); }
+.info > h2 span { color: var(--on-dark-subtle); }
+.section-head > span { color: var(--muted); font-size: 11px; }
+.status-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; padding: 5px; border-radius: 14px; background: var(--surface-sunken); }
+.status-tabs button { padding: 11px 4px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
+.status-tabs button.is-active { background: var(--white); color: var(--ink); box-shadow: 0 3px 12px var(--shadow-tab); }
+.catalog-tools { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.search { position: relative; }
+.search input, .tool-button, .catalog-controls select, .filters-panel input, .filters-panel select, .calculator input, .calculator select, .lead-dialog input, .lead-dialog select, .lead-dialog textarea {
+  width: 100%; min-height: 48px; border: 1px solid var(--line); border-radius: 13px; outline: 0; background: var(--white); color: var(--ink);
+}
+/* Поле, в котором сейчас пишут, должно быть видно сразу. */
+.search input, .catalog-controls select, .filters-panel input, .filters-panel select, .calculator input, .calculator select, .lead-dialog input, .lead-dialog select, .lead-dialog textarea { caret-color: var(--coral); transition: border-color .15s ease, box-shadow .15s ease; }
+.search input:focus, .catalog-controls select:focus, .filters-panel input:focus, .filters-panel select:focus, .calculator input:focus, .calculator select:focus, .lead-dialog input:focus, .lead-dialog select:focus, .lead-dialog textarea:focus { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-ring); }
+.lead-dialog input[readonly] { background: var(--surface-readonly); color: var(--muted); }
+.search input { padding: 0 42px 0 15px; }
+.search > span:not(.sr-only) { position: absolute; top: 11px; right: 15px; color: var(--muted); font: 24px Georgia; }
+.tool-button { width: auto; padding: 0 14px; font-size: 11px; font-weight: 800; }
+.tool-button b { display: inline-grid; min-width: 20px; height: 20px; margin-left: 5px; place-items: center; border-radius: 99px; background: var(--coral); color: var(--on-coral); font-size: 9px; }
+.filters-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 10px; padding: 15px; border-radius: 16px; background: var(--white); box-shadow: 0 18px 40px var(--shadow-panel); }
+.filters-panel label span, .calculator label span, .lead-dialog label span { display: block; margin: 0 0 6px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.filters-panel input, .filters-panel select, .calculator input, .calculator select, .lead-dialog input, .lead-dialog select, .lead-dialog textarea { min-height: 43px; padding: 0 11px; font-size: 12px; }
+.filters-panel select, .calculator select, .lead-dialog select { padding-right: 32px; }
+/* Системный select в iOS игнорирует высоту и скругление, поэтому рисуем свой.
+   Стрелка задаётся после общего background: var(--white), иначе он её сбрасывает. */
+.catalog-controls select, .filters-panel select, .calculator select, .lead-dialog select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2374777d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 12px center; background-repeat: no-repeat;
+}
+.link-button { grid-column: 1 / -1; justify-self: start; padding: 5px 0; border: 0; background: none; color: var(--coral-dark); font-size: 11px; font-weight: 800; }
+.catalog-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 18px; }
+.catalog-controls select { height: 40px; min-height: 40px; padding: 0 32px 0 12px; font-size: 10px; font-weight: 700; }
+.view-toggle { display: flex; gap: 3px; height: 40px; padding: 3px; border-radius: 13px; background: var(--surface-sunken); }
+.view-toggle button { width: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 15px; }
+.view-toggle button.is-active { background: var(--white); color: var(--ink); }
+
+.car-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.car-list.is-list { grid-template-columns: 1fr; }
+.car-card { position: relative; min-width: 0; overflow: hidden; border-radius: 18px; background: var(--white); box-shadow: 0 10px 30px var(--shadow-card); }
+.car-card__media { position: relative; height: 172px; overflow: hidden; background: var(--placeholder); }
+.car-card__media img { width: 100%; height: 100%; color: transparent; object-fit: cover; transition: transform .35s ease; }
+.car-card__status { position: absolute; top: 10px; left: 10px; padding: 7px 9px; border-radius: 99px; background: var(--graphite-glass); color: var(--white); font-size: 8px; font-weight: 800; backdrop-filter: blur(8px); }
+.car-card__status::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--success); }
+.car-card__status.port::before { background: var(--coral); }
+.car-card__media { cursor: pointer; }
+/* Лента фото: листается пальцем, прокрутка доводит до целого снимка. */
+.photo-strip { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.photo-strip::-webkit-scrollbar { display: none; }
+.photo-strip img { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+.favorite-button { position: absolute; z-index: 2; top: 9px; right: 9px; display: grid; width: 33px; height: 33px; place-items: center; border: 0; border-radius: 11px; background: var(--favorite-bg); color: var(--ink); font-size: 17px; }
+.favorite-button.is-active { background: var(--coral); color: var(--on-coral); }
+.car-card__dots { position: absolute; bottom: 8px; left: 50%; display: flex; gap: 3px; transform: translateX(-50%); }
+.car-card__dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--glass-dot); }
+.car-card__dots i.is-active { width: 12px; border-radius: 99px; background: var(--white); }
+.card-gallery-next { position: absolute; right: 9px; bottom: 8px; display: grid; width: 29px; height: 29px; place-items: center; border: 0; border-radius: 9px; background: var(--graphite-glass); color: var(--white); }
+.car-card__body { width: 100%; padding: 14px; border: 0; background: var(--white); color: var(--ink); text-align: left; }
+.car-card__brand { display: block; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.car-card__title { display: block; margin-top: 4px; font-size: 17px; font-weight: 800; line-height: 1.15; }
+.car-card__meta { display: block; margin-top: 7px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.car-card__price { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 12px; font-size: 14px; font-weight: 800; }
+.car-card__new { padding: 3px 7px; border-radius: 99px; background: var(--coral-tint); color: var(--coral-dark); font-size: 8px; font-weight: 800; white-space: nowrap; }
+.car-list.is-list .car-card { display: grid; grid-template-columns: 42% 1fr; }
+.car-list.is-list .car-card__media { height: 100%; min-height: 150px; }
+.empty-state { padding: 65px 20px; border: 1px dashed var(--dashed); border-radius: 18px; text-align: center; }
+.empty-state > span { color: var(--coral-text); font: 38px Georgia; }
+.empty-state h3 { margin: 10px 0 4px; }
+.empty-state p { margin: 0; color: var(--muted); font-size: 12px; }
+.empty-state button { margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 10px; background: var(--ink); color: var(--white); }
+
+.manager-strip { padding: 0 18px; background: var(--paper); }
+.manager-card { display: grid; gap: 24px; padding: 28px 20px; border-radius: 22px; background: var(--white); color: var(--ink); box-shadow: 0 10px 30px var(--shadow-card); }
+.manager-strip button, .primary-button { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 17px; border: 0; border-radius: 14px; background: var(--graphite); color: var(--white); font-size: 11px; font-weight: 800; }
+.calculator form, .lead-dialog form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Подпись в две строки не должна сдвигать своё поле ниже соседнего. */
+.lead-dialog form { align-items: end; }
+.calculator .calculator-price, .calculator .primary-button { grid-column: 1 / -1; }
+.car-detail__actions { display: grid; gap: 8px; margin-top: 22px; }
+.car-detail__actions > button { min-height: 52px; }
+.ghost-button { min-height: 46px; padding: 0 17px; border: 1px solid var(--graphite-border); border-radius: 14px; background: transparent; color: var(--graphite); font-size: 11px; font-weight: 800; }
+.calculator-mode { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; }
+.calculator-mode legend { margin-bottom: 9px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.calculator-mode > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 5px; border-radius: 14px; background: var(--surface-sunken); }
+.calculator-mode label { position: relative; cursor: pointer; }
+.calculator-mode input { position: absolute; width: 1px; min-height: 0; opacity: 0; pointer-events: none; }
+.calculator-mode label span { display: grid; min-height: 40px; margin: 0; padding: 7px 10px; place-items: center; border-radius: 10px; color: var(--muted); font-size: 10px; line-height: 1.25; text-align: center; text-transform: none; }
+.calculator-mode input:checked + span { background: var(--white); color: var(--ink); box-shadow: 0 3px 12px var(--shadow-tab); }
+.calculator-mode input:focus-visible + span { outline: 2px solid var(--coral); outline-offset: 2px; }
+.calculator-price small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.calculator-order-button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 52px; margin-top: 9px; padding: 0 17px; border: 0; border-radius: 14px; background: var(--coral); color: var(--on-coral); font-size: 11px; font-weight: 800; }
+.calculation-result { margin-top: 18px; padding: 18px; border-radius: 16px; background: var(--white); }
+.calculation-result h3 { margin: 0 0 13px; color: var(--coral-dark); font-size: 26px; }
+.calculation-result dl { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin: 0; font-size: 11px; }
+.calculation-result dd { margin: 0; font-weight: 700; }
+.calculation-result p { margin: 13px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.info { background: var(--graphite-2); color: var(--white); }
+.info-grid { display: grid; gap: 8px; margin-top: 28px; }
+.info details, .info-grid button { padding: 18px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--glass-1); color: var(--white); }
+.info summary { font-size: 12px; font-weight: 700; cursor: pointer; }
+.info details p { color: var(--on-dark-text); font-size: 10px; line-height: 1.55; }
+.info-grid button { display: flex; justify-content: space-between; text-align: left; font-size: 12px; font-weight: 700; }
+/* Соцсети и каналы — ряд значков, а не столбик больших карточек. */
+.link-grid { display: flex; gap: 6px; margin-top: 22px; }
+.link-card { display: grid; flex: 1 1 0; min-width: 0; max-width: 84px; justify-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--on-dark-label); }
+.link-card__icon { display: grid; width: 48px; height: 48px; place-items: center; border: 1px solid var(--glass-border); border-radius: 15px; background: var(--glass-2); color: var(--coral); }
+.link-card__text { font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+.link-card b { max-width: 100%; overflow: hidden; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.site-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 26px 18px; background: var(--graphite); color: var(--on-dark-muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.site-footer b { color: var(--white); letter-spacing: .04em; }
+.site-footer__owner { flex-basis: 100%; margin: 8px 0 0; letter-spacing: .02em; line-height: 1.55; text-transform: none; }
+.site-footer__owner a { color: var(--white); }
+.demo-banner { margin: 0; padding: 9px 16px; background: var(--coral); color: var(--on-coral); font-size: 10px; font-weight: 700; line-height: 1.45; text-align: center; }
+.demo-ended { display: grid; min-height: 100vh; padding: 24px; place-content: center; text-align: center; background: var(--paper); color: var(--ink); }
+.demo-ended h1 { margin: 0 0 10px; font-size: 24px; }
+.demo-ended p { max-width: 360px; margin: 0 auto; color: var(--muted); line-height: 1.5; }
+.calculator-note { margin: 12px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+
+dialog { width: min(100% - 20px, 720px); max-height: calc(100dvh - 20px); padding: 0; overflow: auto; border: 0; border-radius: 22px; background: var(--paper); color: var(--ink); }
+dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(5px); }
+.dialog-close { position: sticky; z-index: 10; top: 10px; float: right; display: grid; width: 38px; height: 38px; margin: 10px 10px -48px; place-items: center; border: 0; border-radius: 12px; background: var(--graphite-glass); color: var(--white); font-size: 24px; }
+.car-gallery { position: relative; height: min(58vw, 390px); min-height: 260px; overflow: hidden; background: var(--placeholder); }
+.car-gallery img { width: 100%; height: 100%; object-fit: cover; }
+.dialog-close:focus:not(:focus-visible) { outline: none; }
+.dialog-close:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.gallery-nav { position: absolute; right: 13px; bottom: 13px; display: flex; gap: 6px; }
+.gallery-nav button { width: 38px; height: 38px; border: 0; border-radius: 12px; background: var(--graphite-glass); color: var(--white); }
+.gallery-count { position: absolute; bottom: 15px; left: 15px; padding: 7px 10px; border-radius: 99px; background: var(--graphite-glass); color: var(--white); font-size: 9px; }
+.car-detail { padding: 24px 18px 27px; }
+.car-detail__top { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.car-detail__top .favorite-button { position: static; flex: 0 0 auto; width: 46px; height: 46px; border: 1px solid var(--graphite-border); border-radius: 14px; background: var(--white); font-size: 20px; }
+.car-detail__top .favorite-button.is-active { border-color: var(--coral); background: var(--coral); color: var(--on-coral); }
+.car-detail h2 { font-size: clamp(35px, 9vw, 55px); }
+.car-detail__price { margin: 18px 0; color: var(--coral-dark); font-size: 24px; font-weight: 800; }
+.detail-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+.detail-specs div { padding: 12px; background: var(--white); }
+.detail-specs dt { color: var(--muted); font-size: 8px; text-transform: uppercase; }
+.detail-specs dd { margin: 4px 0 0; font-size: 11px; font-weight: 700; }
+.car-detail__description { margin: 18px 0 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.lead-dialog { padding: 30px 18px; }
+.lead-dialog header { padding-right: 35px; margin-bottom: 23px; }
+.lead-dialog header > p:last-child { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.lead-dialog textarea { min-height: 95px; padding-top: 11px; resize: vertical; }
+.lead-dialog .wide { grid-column: 1 / -1; }
+.lead-dialog .consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.lead-dialog .consent input { flex: none; width: 20px; height: 20px; min-height: 20px; margin: 1px 0 0; padding: 0; accent-color: var(--coral); }
+.lead-dialog .consent span { margin: 0; font-size: 11px; font-weight: 500; line-height: 1.45; text-transform: none; }
+.lead-dialog .consent a { color: var(--coral-dark); text-decoration: underline; }
+.demo-note { margin: -8px 0 18px; padding: 11px 13px; border-radius: 12px; background: var(--coral-soft); color: var(--coral-dark); font-size: 11px; line-height: 1.45; }
+.lead-sample h3 { margin: 0 0 8px; font-size: 20px; }
+.lead-sample > p { margin: 0 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.lead-sample__message { padding: 14px 15px; border-radius: 16px 16px 16px 4px; background: var(--white); font-size: 12px; line-height: 1.6; box-shadow: 0 6px 20px var(--shadow-raised); overflow-wrap: anywhere; }
+.lead-sample__button { display: block; margin-top: 12px; padding: 9px; border-radius: 10px; background: var(--surface-sunken); font-size: 11px; font-weight: 700; text-align: center; }
+.lead-sample .primary-button { width: 100%; margin-top: 16px; }
+.favorites-dialog { padding: 28px 17px 18px; }
+.favorites-dialog__head { padding-right: 45px; margin-bottom: 20px; }
+.favorites-dialog__head h2 { font-size: clamp(38px, 10vw, 58px); }
+.favorites-dialog__head > p:last-child { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+.favorites-list { display: grid; gap: 9px; }
+.favorite-row { display: grid; grid-template-columns: 88px 1fr 35px; gap: 11px; align-items: center; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); }
+.favorite-row > img { width: 88px; height: 72px; border-radius: 10px; background: var(--placeholder); object-fit: cover; }
+.favorite-row__content { min-width: 0; padding: 5px 0; border: 0; background: transparent; color: var(--ink); text-align: left; }
+.favorite-row__content b, .favorite-row__content span, .favorite-row__content strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-row__content b { font-size: 13px; }
+.favorite-row__content span { margin-top: 5px; color: var(--muted); font-size: 9px; }
+.favorite-row__content strong { margin-top: 8px; font-size: 12px; }
+.favorite-row__remove { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 10px; background: var(--surface-soft); color: var(--muted); font-size: 18px; }
+.favorites-empty { padding: 52px 20px; border: 1px dashed var(--dashed); border-radius: 16px; text-align: center; }
+.favorites-empty > span { color: var(--coral-text); font-size: 38px; }
+.favorites-empty h3 { margin: 9px 0 5px; }
+.favorites-empty p { max-width: 330px; margin: auto; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.favorites-back { width: 100%; min-height: 48px; margin-top: 15px; border: 0; border-radius: 13px; background: var(--graphite); color: var(--white); font-size: 11px; font-weight: 800; }
+.toast { position: fixed; z-index: 100; right: 14px; bottom: max(18px, env(safe-area-inset-bottom)); left: 14px; max-width: 500px; margin: auto; padding: 13px 16px; border-radius: 12px; background: var(--graphite); color: var(--white); font-size: 11px; text-align: center; visibility: hidden; transform: translateY(calc(100% + 40px)); transition: transform .22s ease, visibility .22s; box-shadow: 0 12px 30px var(--shadow-float); }
+/* Спрятанное уведомление раньше выглядывало полоской у нижнего края. */
+.toast.is-visible { visibility: visible; transform: translateY(0); }
+
+@media (min-width: 650px) {
+  .hero { padding-right: 34px; padding-left: 34px; }
+  .location-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .location-cards__order { grid-column: auto; }
+  .catalog, .calculator, .info { padding-right: 34px; padding-left: 34px; }
+  .car-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .car-list.is-list { grid-template-columns: 1fr 1fr; }
+  .manager-strip { padding-right: 34px; padding-left: 34px; }
+  .manager-card { grid-template-columns: 1fr 230px; align-items: end; padding: 34px; }
+}
+
+@media (max-width: 390px) {
+  .hero__copy { margin-top: 55px; }
+  .hero__copy h1 { font-size: 43px; }
+  .location-cards button { gap: 8px; padding: 13px 10px; }
+  .location-cards__icon { width: 36px; height: 36px; border-radius: 11px; }
+  .car-card__media { height: 145px; }
+  .favorite-row { grid-template-columns: 76px 1fr 32px; }
+  .favorite-row > img { width: 76px; height: 66px; }
+}
+
+/* iOS приближает страницу, если шрифт в поле меньше 16 px: при вводе имени
+   или телефона экран «уезжал», и не было видно, что пишешь. На сенсорных
+   экранах поля получают 16 px, на компьютере вид прежний. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
+@media (hover: hover) {
+  .location-cards button:hover { border-color: var(--glass-border-hover); }
+  .car-card:hover .car-card__media img { transform: scale(1.025); }
+  .link-card:hover .link-card__icon { border-color: var(--glass-border-hover); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; }
+}
+
+.recent-strip { margin: 0 0 14px; padding: 14px; border-radius: 16px; background: var(--white); box-shadow: 0 10px 30px var(--shadow-card); }
+.recent-strip__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.recent-strip__head button { border: 0; background: none; color: var(--coral-dark); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.recent-row { display: flex; gap: 9px; overflow-x: auto; padding-bottom: 4px; }
+.recent-card { flex: 0 0 116px; padding: 0; border: 0; background: none; text-align: left; }
+.recent-card img { width: 100%; height: 66px; margin-bottom: 7px; border-radius: 11px; object-fit: cover; background: var(--placeholder); }
+.recent-card b { display: block; overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+.compare-bar { position: fixed; z-index: 90; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 812px; margin: 0 auto; padding: 11px 11px 11px 17px; border-radius: 16px; background: var(--graphite); color: var(--white); font-size: 11px; font-weight: 700; box-shadow: 0 16px 40px var(--shadow-bar); }
+.compare-bar div { display: flex; gap: 7px; }
+.compare-bar button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--glass-3); color: var(--white); font-size: 11px; font-weight: 800; }
+.compare-bar #compare-open { background: var(--coral); color: var(--on-coral); }
+.compare-dialog { width: min(100% - 20px, 720px); max-height: calc(100vh - 32px); padding: 24px; overflow: auto; border: 0; border-radius: 20px; background: var(--paper); }
+.compare-dialog::backdrop { background: var(--backdrop-light); }
+.compare-table { overflow-x: auto; margin-top: 18px; }
+.compare-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.compare-table th, .compare-table td { padding: 11px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.compare-table thead th { color: var(--ink); font-size: 12px; }
+.compare-table tbody th { width: 96px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+
+/* Страховка запуска, см. boot.js */
+.boot-fail { position: fixed; z-index: 1000; inset: 0; display: grid; padding: 16px; place-items: center; background: #08090bcc; }
+.boot-fail__card { max-width: 380px; padding: 20px; border-radius: 16px; background: #fff; color: #191b1f; font: 14px/1.5 Arial, sans-serif; }
+.boot-fail__card h2 { margin: 0 0 8px; font-size: 19px; }
+.boot-fail__card p { margin: 0 0 8px; }
+.boot-fail__card a { color: inherit; font-weight: 700; }
+.boot-fail__card button { width: 100%; min-height: 44px; margin-top: 8px; border: 0; border-radius: 10px; background: #191b1f; color: #fff; font: inherit; font-weight: 700; }

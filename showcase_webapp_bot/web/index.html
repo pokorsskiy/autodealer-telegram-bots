@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17191d">
+  <title>АвтоПривоз — автомобили в городе и в порту</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/vendor/telegram-web-app.js"></script>
+</head>
+<body>
+  <main>
+    <!-- Плашка и образец заявки включаются, если /api/site сообщает о демо. -->
+    <p class="demo-banner" id="demo-banner" hidden>Демо-версия: компания «АвтоПривоз» и автомобили вымышленные, заявки никуда не отправляются. Не является публичной офертой.</p>
+    <section class="hero" id="top">
+      <nav class="topbar" aria-label="Основная навигация">
+        <a class="brand" href="#top"><span data-brand-initials>АП</span> <b data-brand-name>АвтоПривоз</b></a>
+        <button class="favorite-head" id="favorite-head" type="button" aria-label="Открыть избранное">
+          <span aria-hidden="true">♥︎</span>
+          <b id="favorite-head-count">0</b>
+        </button>
+      </nav>
+
+      <div class="hero__copy">
+        <p class="eyebrow" data-text="heroEyebrow">Автомобили без лишних ожиданий</p>
+        <h1 data-text="heroTitle">Ваш следующий автомобиль уже ближе</h1>
+        <p data-text="heroLead">Выберите машину в городе, вариант из порта или рассчитайте привоз под заказ.</p>
+      </div>
+
+      <div class="location-cards" aria-label="Категории каталога">
+        <button type="button" data-location-jump="city">
+          <span class="location-cards__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+          <span><b data-text="city">В городе</b><small data-text="cityNote">Можно посмотреть сейчас</small></span>
+          <i>→</i>
+        </button>
+        <button type="button" data-location-jump="port">
+          <span class="location-cards__icon location-cards__icon--port"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M8.5 11h7M5 13.5a7 7 0 0 0 14 0"/></svg></span>
+          <span><b data-text="port">В порту</b><small data-text="portNote">Ускоренная доставка</small></span>
+          <i>→</i>
+        </button>
+        <button class="location-cards__order" type="button" data-calculator-jump>
+          <span class="location-cards__icon location-cards__icon--order"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span>
+          <span><b data-text="order">Под заказ</b><small data-text="orderNote">Рассчитать стоимость привоза</small></span>
+          <i>→</i>
+        </button>
+      </div>
+    </section>
+
+    <section class="catalog" id="catalog" aria-labelledby="catalog-title">
+      <header class="section-head">
+        <h2 id="catalog-title">Автомобили</h2>
+        <span id="result-count">Загрузка…</span>
+      </header>
+
+      <div class="status-tabs" role="group" aria-label="Расположение автомобиля">
+        <button class="is-active" type="button" data-location="">Все</button>
+        <button type="button" data-location="city" data-text="city">В городе</button>
+        <button type="button" data-location="port" data-text="port">В порту</button>
+      </div>
+
+      <div class="catalog-tools">
+        <label class="search">
+          <span class="sr-only">Поиск по марке и модели</span>
+          <input id="search" type="search" enterkeyhint="search" placeholder="Марка или модель" autocomplete="off">
+          <span aria-hidden="true">⌕</span>
+        </label>
+        <button class="tool-button" id="filters-button" type="button" aria-expanded="false" aria-controls="filters-panel">
+          Фильтры <b id="active-filter-count" hidden>0</b>
+        </button>
+      </div>
+
+      <div class="filters-panel" id="filters-panel" hidden>
+        <label><span>Марка</span><select id="brand-filter"><option value="">Все марки</option></select></label>
+        <label><span>Цена до</span><input id="price-filter" type="number" min="0" step="100000" placeholder="Любая"></label>
+        <label><span>Год от</span><input id="year-filter" type="number" min="1950" max="2100" placeholder="Любой"></label>
+        <label><span>Год до</span><input id="year-to-filter" type="number" min="1950" max="2100" placeholder="Любой"></label>
+        <label><span>Пробег до</span><input id="mileage-filter" type="number" min="0" step="1000" placeholder="Любой"></label>
+        <label><span>Двигатель до, л</span><input id="engine-filter" type="number" min="0.5" max="10" step="0.1" inputmode="decimal" placeholder="Любой"></label>
+        <label><span>Кузов</span><select id="body-filter"><option value="">Любой</option></select></label>
+        <label><span>Привод</span><select id="drive-filter"><option value="">Любой</option></select></label>
+        <button class="link-button" id="reset-filters" type="button">Сбросить фильтры</button>
+      </div>
+
+      <div class="catalog-controls">
+        <label>
+          <span class="sr-only">Сортировка</span>
+          <select id="sort">
+            <option value="new">Сначала новые</option>
+            <option value="price-asc">Цена: ниже</option>
+            <option value="price-desc">Цена: выше</option>
+            <option value="mileage-asc">Пробег: меньше</option>
+            <option value="year-desc">Год: новее</option>
+            <option value="year-asc">Год: старше</option>
+          </select>
+        </label>
+        <div class="view-toggle" role="group" aria-label="Вид каталога">
+          <button class="is-active" type="button" data-view="grid" aria-label="Плитка">▦︎</button>
+          <button type="button" data-view="list" aria-label="Список">☷︎</button>
+        </div>
+      </div>
+
+      <div class="recent-strip" id="recent-strip" hidden>
+        <div class="recent-strip__head">
+          <span>Только что смотрели</span>
+          <button type="button" id="clear-recent">Очистить</button>
+        </div>
+        <div class="recent-row" id="recent-row"></div>
+      </div>
+
+      <div class="car-list" id="car-list" aria-live="polite"></div>
+      <div class="empty-state" id="empty-state" hidden>
+        <span>⌕</span>
+        <h3>Автомобили не найдены</h3>
+        <p>Измените параметры поиска или сбросьте фильтры.</p>
+        <button type="button" data-reset>Сбросить</button>
+      </div>
+    </section>
+
+    <section class="manager-strip">
+      <div class="manager-card">
+        <h2>Подберём автомобиль <span>под вашу задачу</span></h2>
+        <button type="button" data-open-manager>Обсудить с менеджером <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="calculator" id="calculator">
+      <header class="section-head">
+        <h2>Рассчитайте <span>стоимость</span></h2>
+      </header>
+      <form id="calculator-form">
+        <fieldset class="calculator-mode">
+          <legend>С чего считаем?</legend>
+          <div>
+            <label><input type="radio" name="price_mode" value="known" checked><span>Знаю цену машины</span></label>
+            <label><input type="radio" name="price_mode" value="budget"><span>Знаю свой бюджет</span></label>
+          </div>
+        </fieldset>
+        <label class="calculator-price">
+          <span id="calculator-price-label">Стоимость автомобиля за границей, ₽</span>
+          <input name="price" type="number" min="50000" max="50000000" step="10000" value="3500000" inputmode="numeric" required>
+          <small id="calculator-price-hint">Введите известную стоимость автомобиля без доставки и оформления.</small>
+        </label>
+        <label><span>Возраст</span><select name="age" required><option value="under_3">До 3 лет</option><option value="3_to_5">От 3 до 5 лет</option><option value="over_5">Старше 5 лет</option></select></label>
+        <label><span>Двигатель, л</span><input name="engine" type="number" min=".5" max="10" step=".1" value="2.0" required></label>
+        <button class="primary-button" type="submit">Рассчитать <span>→</span></button>
+      </form>
+      <p class="calculator-note">Расчёт ориентировочный и не является публичной офертой.</p>
+      <div class="calculation-result" id="calculation-result" hidden></div>
+      <button class="calculator-order-button" type="button" data-open-order hidden>Сделать заказ <span>→</span></button>
+    </section>
+
+    <section class="info">
+      <h2>Всё важное <span>рядом</span></h2>
+      <div class="info-grid">
+        <details><summary>Как проходит покупка?</summary><p>Уточняем требования, подбираем автомобиль, согласовываем итоговую смету и сопровождаем сделку до передачи автомобиля.</p></details>
+        <details><summary>Сколько занимает доставка?</summary><p>Срок зависит от страны, маршрута и загруженности перевозчиков. Точный прогноз менеджер сообщает после выбора автомобиля.</p></details>
+        <details><summary>Что входит в расчёт?</summary><p>Стоимость автомобиля, ориентировочная таможенная пошлина, утилизационный сбор, доставка и расходы на оформление.</p></details>
+        <details><summary>Какие нужны документы?</summary><p>Для предварительного подбора достаточно описания автомобиля и бюджета. Перечень документов для сделки менеджер сообщит перед оформлением.</p></details>
+      </div>
+
+      <!-- Адреса приходят из /api/links; значок без адреса не показывается. -->
+      <div class="link-grid" id="link-grid" hidden>
+        <button class="link-card" type="button" data-link data-link-name="channel" data-url="" hidden>
+          <span class="link-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11l6 2.2L18 7l-7 7.5.5 5.5 3-4 4.5 3.5z"/></svg></span>
+          <b>Канал</b>
+        </button>
+        <button class="link-card" type="button" data-link data-link-name="reviews" data-url="" hidden>
+          <span class="link-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></svg></span>
+          <b>Отзывы</b>
+        </button>
+        <button class="link-card" type="button" data-link data-link-name="community" data-url="" hidden>
+          <span class="link-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7l-4.5 3.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5z"/></svg></span>
+          <b>Чат</b>
+        </button>
+        <button class="link-card" type="button" data-link data-link-name="max" data-url="" hidden>
+          <span class="link-card__icon"><span class="link-card__text">MAX</span></span>
+          <b>MAX</b>
+        </button>
+        <button class="link-card" type="button" data-link data-link-name="vk" data-url="" hidden>
+          <span class="link-card__icon"><span class="link-card__text">VK</span></span>
+          <b>ВКонтакте</b>
+        </button>
+        <button class="link-card" type="button" data-link data-link-name="youtube" data-url="" hidden>
+          <span class="link-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="m10.5 9.5 4 2.5-4 2.5z"/></svg></span>
+          <b>YouTube</b>
+        </button>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <b data-brand-name>АвтоПривоз</b>
+      <span data-text="footer">Автомобили в наличии, в порту и под заказ</span>
+      <p class="site-footer__owner" id="site-owner" hidden></p>
+    </footer>
+  </main>
+
+  <dialog class="favorites-dialog" id="favorites-dialog" aria-labelledby="favorites-title">
+    <button class="dialog-close" type="button" data-close-favorites aria-label="Закрыть">×</button>
+    <header class="favorites-dialog__head">
+      <p class="eyebrow">Ваш выбор</p>
+      <h2 id="favorites-title">Избранное</h2>
+      <p id="favorites-summary">0 автомобилей</p>
+    </header>
+    <div class="favorites-list" id="favorites-list"></div>
+    <div class="favorites-empty" id="favorites-empty" hidden>
+      <span>♡︎</span>
+      <h3>Пока ничего не добавлено</h3>
+      <p>Нажимайте на сердце в карточках, чтобы сохранить интересные варианты.</p>
+    </div>
+    <button class="favorites-back" type="button" data-close-favorites>Продолжить выбор</button>
+  </dialog>
+
+  <div class="compare-bar" id="compare-bar" hidden>
+    <span id="compare-count">0 автомобилей</span>
+    <div>
+      <button type="button" id="compare-clear">Сбросить</button>
+      <button type="button" id="compare-open">Сравнить</button>
+    </div>
+  </div>
+
+  <dialog class="compare-dialog" id="compare-dialog" aria-labelledby="compare-title">
+    <button class="dialog-close" type="button" data-close-compare aria-label="Закрыть">×</button>
+    <p class="eyebrow">Рядом</p>
+    <h2 id="compare-title">Сравнение</h2>
+    <div class="compare-table" id="compare-table"></div>
+  </dialog>
+
+  <dialog class="car-dialog" id="car-dialog" aria-labelledby="car-dialog-title">
+    <button class="dialog-close" type="button" data-close-car aria-label="Закрыть">×</button>
+    <div id="car-dialog-content"></div>
+  </dialog>
+
+  <dialog class="lead-dialog" id="lead-dialog" aria-labelledby="lead-dialog-title">
+    <button class="dialog-close" type="button" data-close-lead aria-label="Закрыть">×</button>
+    <header>
+      <p class="eyebrow" id="lead-kicker">Заявка</p>
+      <h2 id="lead-dialog-title">Обсудить автомобиль</h2>
+      <p id="lead-description">Оставьте контакты — менеджер свяжется с вами.</p>
+    </header>
+    <p class="demo-note" id="lead-demo-note" hidden>Это демо: заявка никуда не отправится. Вместо отправки покажем, как её увидит менеджер.</p>
+    <form id="lead-form">
+      <input type="hidden" name="lead_type" value="car">
+      <input type="hidden" name="car_id">
+      <label><span>Имя</span><input name="name" required minlength="2" maxlength="80" autocomplete="name"></label>
+      <label><span>Телефон</span><input name="phone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67"></label>
+      <label><span>Telegram username <small>необязательно</small></span><input name="username" maxlength="64" autocomplete="username" placeholder="@username"></label>
+      <label><span>Способ покупки</span><select name="purchase_method" required><option value="">Выберите</option><option>Наличные</option><option>Кредит</option><option>Трейд-ин</option><option>Нужна консультация</option></select></label>
+      <label class="wide"><span>Автомобиль</span><input id="car-interest" name="car_interest" required maxlength="80" readonly></label>
+      <label class="wide"><span>Комментарий <small>необязательно</small></span><textarea name="comment" maxlength="500"></textarea></label>
+      <label class="wide consent"><input type="checkbox" name="consent" value="1" required><span>Даю <a href="/consent" data-legal-link>согласие на обработку персональных данных</a> и принимаю <a href="/privacy" data-legal-link>политику конфиденциальности</a></span></label>
+      <button class="primary-button wide" type="submit">Отправить заявку <span>→</span></button>
+    </form>
+    <div class="lead-sample" id="lead-sample" hidden>
+      <h3>Заявка не отправлена</h3>
+      <p>Так она придёт менеджеру в Telegram — с данными вымышленного клиента:</p>
+      <div class="lead-sample__message" id="lead-sample-message"></div>
+      <button class="primary-button" type="button" data-close-lead>Понятно <span>→</span></button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/boot.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

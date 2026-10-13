@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% if demo %}Демо-админка — АвтоПривоз{% else %}Dealer Auto — управление каталогом{% endif %}</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=20261005-3">
+  <script src="/vendor/telegram-web-app.js"></script>
+</head>
+<body>
+  {% set role_labels = {"manager": "Менеджер", "owner": "Владелец", "developer": "Разработчик"} %}
+  {% if demo %}
+  <p class="demo-banner">Демо-админка: всё можно нажимать и менять. Изменения видите только вы — здесь и в своём демо-каталоге. <button type="button" id="demo-reset" hidden>Сбросить изменения</button></p>
+  {% endif %}
+  <header class="admin-topbar">
+    {% if demo %}
+    <a href="/admin/demo" class="admin-brand" id="admin-brand"><span data-brand-initials>АП</span> <b data-brand-name>АвтоПривоз</b></a>
+    {% else %}
+    <a href="/admin" class="admin-brand"><span>DA</span> Dealer Auto</a>
+    {% endif %}
+    <div class="admin-account">
+      <span>{{ admin.username }}</span>
+      <b class="role-badge role-badge--{{ admin.role }}">{{ role_labels[admin.role] }}</b>
+      {% if demo %}
+      <a class="admin-site-link" id="admin-site-link" href="/">На сайт</a>
+      {% else %}
+      <form method="post" action="/admin/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Выйти</button>
+      </form>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="admin-shell" data-role="{{ admin.role }}"{% if demo %} data-demo="1"{% endif %}>
+    <aside class="admin-sidebar">
+      <div>
+        <p class="eyebrow">Каталог</p>
+        <h1>Автомобили</h1>
+      </div>
+      <div class="admin-summary" id="admin-summary"></div>
+      <nav class="admin-nav" aria-label="Разделы">
+        <button class="users-button" id="open-leads" type="button">Заявки <b class="nav-count" id="leads-count" hidden></b></button>
+        {% if admin.role in ("owner", "developer") %}
+        <button class="users-button" id="open-actions" type="button">Журнал</button>
+        <button class="users-button" id="open-users" type="button">Пользователи</button>
+        {% endif %}
+      </nav>
+      <button class="primary" id="new-car" type="button">+ Добавить автомобиль</button>
+      <label class="admin-search"><span>Поиск</span><input id="admin-search" type="search" placeholder="Марка или модель"></label>
+      <div class="admin-tabs" role="group" aria-label="Что показывать">
+        <button class="is-active" type="button" data-scope="active">В продаже</button>
+        <button type="button" data-scope="sold">Архив</button>
+      </div>
+      <div class="admin-car-list" id="admin-car-list"></div>
+    </aside>
+
+    <section class="editor">
+      <div class="editor-empty" id="editor-empty">
+        <span>←</span>
+        <div><h2>Выберите автомобиль</h2><p>Или создайте новую карточку каталога.</p></div>
+      </div>
+
+      <form id="car-form" hidden>
+        <button class="editor-back" id="editor-back" type="button">← К списку</button>
+        <header class="editor-head">
+          <div><p class="eyebrow" id="editor-kicker">Карточка</p><h2 id="editor-title">Автомобиль</h2></div>
+          <div class="editor-actions">
+            <button id="toggle-sold" type="button" hidden>Продано</button>
+            <button class="danger" id="delete-car" type="button" hidden>Удалить</button>
+            <button class="primary" type="submit">Сохранить</button>
+          </div>
+        </header>
+        <input type="hidden" name="original_id">
+        <div class="form-grid">
+          <label><span>ID карточки</span><input name="id" required maxlength="80" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="toyota-camry-2025"></label>
+          <label><span>Статус</span><select name="location" required><option value="city">В городе</option><option value="port">В порту</option></select></label>
+          <label><span>Марка</span><input name="brand" required maxlength="60"></label>
+          <label><span>Модель</span><input name="model" required maxlength="80"></label>
+          <label><span>Год</span><input name="year" type="number" required min="1950" max="2100"></label>
+          <label><span>Цена, ₽</span><input name="price" type="number" required min="0" max="1000000000" step="1000"></label>
+          <label><span>Пробег, км</span><input name="mileage" type="number" required min="0" max="10000000"></label>
+          <label><span>Кузов</span><input name="body" required maxlength="60"></label>
+          <label><span>Привод</span><input name="drive" required maxlength="60"></label>
+          <label><span>Двигатель</span><input name="engine" required maxlength="100" placeholder="2.0 л · бензин"></label>
+          <label><span>Мощность</span><input name="power" required maxlength="60" placeholder="200 л.с."></label>
+          <label><span>Порядок</span><input name="sort_order" type="number" required min="-10000" max="10000" value="0"></label>
+          <label class="wide"><span>Описание</span><textarea name="description" maxlength="2000"></textarea></label>
+          <label class="check wide"><input name="is_visible" type="checkbox" checked><span>Показывать автомобиль в каталоге</span></label>
+        </div>
+
+        <section class="photos" id="photos-section">
+          <div class="subhead"><div><p class="eyebrow">Галерея</p><h3>Фотографии</h3></div><span>JPG, PNG или WEBP · до 8 МБ</span></div>
+          <p class="photos-hint" id="photos-hint" hidden>Фотографии загрузятся после сохранения карточки.</p>
+          <div class="photo-list" id="photo-list"></div>
+          <label class="upload">
+            <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+            <span>+ Загрузить фотографии</span>
+          </label>
+        </section>
+      </form>
+    </section>
+  </main>
+
+  {% if admin.role in ("owner", "developer") %}
+  <dialog id="actions-dialog">
+    <header class="dialog-head">
+      <div><p class="eyebrow">Кто что менял</p><h2>Журнал действий</h2></div>
+      <button class="dialog-close" type="button" data-close-actions aria-label="Закрыть"><span class="dialog-close__x">×</span><span class="dialog-close__back">← Назад</span></button>
+    </header>
+    <div class="actions-list" id="actions-list"></div>
+  </dialog>
+
+  <dialog id="users-dialog">
+    <header class="dialog-head">
+      <div><p class="eyebrow">Доступ</p><h2>Пользователи</h2></div>
+      <button class="dialog-close" type="button" data-close-users aria-label="Закрыть"><span class="dialog-close__x">×</span><span class="dialog-close__back">← Назад</span></button>
+    </header>
+    <dl class="role-legend">
+      <div><dt><b class="role-badge role-badge--manager">Менеджер</b></dt><dd>Ведёт каталог и заявки: добавляет и правит автомобили и фото, отмечает проданные, берёт заявки в работу, выгружает CSV.</dd></div>
+      <div><dt><b class="role-badge role-badge--owner">Владелец</b></dt><dd>Всё, что менеджер, а также удаляет автомобили, видит журнал действий и управляет менеджерами.</dd></div>
+      <div><dt><b class="role-badge role-badge--developer">Разработчик</b></dt><dd>Полный доступ для поддержки бота: управляет всеми учётными записями, включая владельцев.</dd></div>
+    </dl>
+    <div id="users-list" class="users-list"></div>
+    <form id="user-form" class="user-form">
+      <h3>Новая учётная запись</h3>
+      <label><span>Логин</span><input name="username" required minlength="3" maxlength="50"></label>
+      <label><span>Пароль</span><input name="password" type="password" required minlength="12" maxlength="200"></label>
+      <label><span>Роль</span><select name="role"><option value="manager">Менеджер</option>{% if admin.role == "developer" %}<option value="owner">Владелец</option><option value="developer">Разработчик</option>{% endif %}</select></label>
+      <button class="primary" type="submit">Создать</button>
+    </form>
+  </dialog>
+  {% endif %}
+
+  <dialog id="leads-dialog">
+    <header class="dialog-head">
+      <div><p class="eyebrow">Обращения клиентов</p><h2>Заявки</h2></div>
+      <button class="dialog-close" type="button" data-close-leads aria-label="Закрыть"><span class="dialog-close__x">×</span><span class="dialog-close__back">← Назад</span></button>
+    </header>
+    <div class="admin-tabs lead-tabs" role="group" aria-label="Какие заявки показывать">
+      <button class="is-active" type="button" data-lead-scope="active">Активные</button>
+      <button type="button" data-lead-scope="archive">Архив</button>
+    </div>
+    <div class="leads-tools">
+      <input id="leads-search" type="search" placeholder="Имя, телефон или автомобиль">
+      <select id="leads-status">
+        <option value="">Все статусы</option>
+        <option value="new">Новые</option>
+        <option value="in_work">В работе</option>
+        <option value="won">Купили</option>
+        <option value="lost">Отказ</option>
+      </select>
+      {% if not demo %}<a class="leads-export" id="leads-export" href="/api/admin/leads.csv">Выгрузить CSV</a>{% endif %}
+    </div>
+    <p class="leads-summary" id="leads-summary">Загрузка…</p>
+    <div class="leads-list" id="leads-list"></div>
+  </dialog>
+
+  <div class="toast" id="admin-toast" role="status" aria-live="polite"></div>
+  <script src="/boot.js"></script>
+  <script src="/admin/admin.js?v=20261005-3"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+body { margin: 0; background: #f4f3f0; color: #191b1f; font: 15px/1.5 Arial, sans-serif; }
+.check { max-width: 520px; margin: 0 auto; padding: 24px 16px 40px; }
+.check h1 { margin: 0 0 8px; font-size: 24px; }
+.check__lead { margin: 0 0 18px; color: #555; }
+.check__list { margin: 0; padding: 0; list-style: none; }
+.check__list li { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: #fff; }
+.check__list li::before { content: "✅ "; }
+.check__list li.is-bad::before { content: "❌ "; }
+.check__list li.is-wait::before { content: "⏳ "; }
+.check__list li small { display: block; color: #74777d; }
+.check__meta { margin-top: 18px; color: #74777d; font-size: 12px; word-break: break-word; }

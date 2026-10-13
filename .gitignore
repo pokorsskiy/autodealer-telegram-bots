@@ -1,0 +1,25 @@
+# Настройки с токенами и реквизиты оператора: у каждой установки свои
+.env
+legal.json
+
+# Базы SQLite и их резервные копии
+*.db
+*.db.bak
+*.db.bak.*
+*.sqlite3
+
+# Загруженные фото, именные демо и песочницы демо-админки
+showcase_webapp_bot/uploads/
+showcase_webapp_bot/demos/
+showcase_webapp_bot/demo_sandboxes/
+
+# Окружение Python и кэш
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Настройки IDE
+.idea/
+.vscode/

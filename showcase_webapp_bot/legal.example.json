@@ -1,0 +1,14 @@
+{
+  "operator": "ООО «Название»",
+  "inn": "0000000000",
+  "ogrn": "0000000000000",
+  "address": "000000, г. Город, ул. Улица, д. 1",
+  "email": "mail@example.ru",
+  "contact": "@manager",
+  "responsible": "директор Иванов И. И.",
+  "bot": "@name_auto_bot",
+  "processor": "Фамилия Имя Отчество",
+  "processor_inn": "000000000000",
+  "storage": "3 лет",
+  "updated": "01.01.2026"
+}

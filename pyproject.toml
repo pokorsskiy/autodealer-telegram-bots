@@ -1,0 +1,18 @@
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["showcase_webapp_bot/web/vendor"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, сортировка импортов, типичные ошибки и устаревший синтаксис.
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Тесты задают переменные окружения до импорта модулей бота.
+"test_*.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+# Каждый бот запускается из своей папки, его модули импортируются без пакета.
+known-first-party = [
+    "bot", "calculator", "config", "database", "keyboards", "logger", "server", "texts",
+]

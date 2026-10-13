@@ -1,0 +1,160 @@
+{
+  "cars": [
+    {
+      "id": "toyota-camry-2024",
+      "brand": "Toyota",
+      "model": "Camry",
+      "year": 2024,
+      "price": 3850000,
+      "mileage": 8000,
+      "body": "Седан",
+      "drive": "Передний",
+      "engine": "2.5 л · бензин",
+      "power": "203 л.с.",
+      "description": "Комфортный седан для города и трассы с просторным салоном и современными ассистентами.",
+      "location": "city",
+      "is_visible": true,
+      "sort_order": 0,
+      "created_at": "2026-09-22T21:34:03.370491+00:00",
+      "images": [
+        {
+          "id": 1,
+          "car_id": "toyota-camry-2024",
+          "url": "/demo/toyota-camry.png",
+          "alt_text": "Toyota Camry",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": "bmw-x5-2023",
+      "brand": "BMW",
+      "model": "X5",
+      "year": 2023,
+      "price": 8900000,
+      "mileage": 24000,
+      "body": "Кроссовер",
+      "drive": "Полный",
+      "engine": "3.0 л · дизель",
+      "power": "298 л.с.",
+      "description": "Премиальный кроссовер с полным приводом и высоким уровнем комфорта для дальних поездок.",
+      "location": "port",
+      "is_visible": true,
+      "sort_order": 1,
+      "created_at": "2026-09-18T21:34:03.370491+00:00",
+      "images": [
+        {
+          "id": 2,
+          "car_id": "bmw-x5-2023",
+          "url": "/demo/bmw-x5.jpg",
+          "alt_text": "BMW X5",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": "geely-monjaro-2025",
+      "brand": "Geely",
+      "model": "Monjaro",
+      "year": 2025,
+      "price": 4650000,
+      "mileage": 2000,
+      "body": "Кроссовер",
+      "drive": "Полный",
+      "engine": "2.0 л · бензин",
+      "power": "238 л.с.",
+      "description": "Современный семейный кроссовер с просторным салоном и богатым набором электронных помощников.",
+      "location": "port",
+      "is_visible": true,
+      "sort_order": 2,
+      "created_at": "2026-07-26T15:25:02+00:00",
+      "images": [
+        {
+          "id": 3,
+          "car_id": "geely-monjaro-2025",
+          "url": "/demo/geely-monjaro.png",
+          "alt_text": "Geely Monjaro",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": "audi-q5-2023",
+      "brand": "Audi",
+      "model": "Q5",
+      "year": 2023,
+      "price": 7450000,
+      "mileage": 31000,
+      "body": "Кроссовер",
+      "drive": "Полный",
+      "engine": "2.0 л · бензин",
+      "power": "265 л.с.",
+      "description": "Сбалансированный премиальный кроссовер с quattro и удобным размером для ежедневной эксплуатации.",
+      "location": "city",
+      "is_visible": true,
+      "sort_order": 3,
+      "created_at": "2026-07-26T15:25:02+00:00",
+      "images": [
+        {
+          "id": 4,
+          "car_id": "audi-q5-2023",
+          "url": "/demo/audi-q5.webp",
+          "alt_text": "Audi Q5",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": "kia-sorento-2024",
+      "brand": "Kia",
+      "model": "Sorento",
+      "year": 2024,
+      "price": 5300000,
+      "mileage": 12000,
+      "body": "Внедорожник",
+      "drive": "Полный",
+      "engine": "2.5 л · бензин",
+      "power": "281 л.с.",
+      "description": "Практичный семиместный автомобиль для семьи, путешествий и повседневных задач.",
+      "location": "city",
+      "is_visible": true,
+      "sort_order": 4,
+      "created_at": "2026-07-26T15:25:02+00:00",
+      "images": [
+        {
+          "id": 5,
+          "car_id": "kia-sorento-2024",
+          "url": "/demo/kia-sorento.jpg",
+          "alt_text": "Kia Sorento",
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "id": "toyota-camry-2022",
+      "brand": "Toyota",
+      "model": "Camry Prestige",
+      "year": 2022,
+      "price": 3300000,
+      "mileage": 54000,
+      "body": "Седан",
+      "drive": "Передний",
+      "engine": "2.5 л · бензин",
+      "power": "200 л.с.",
+      "description": "Проверенный седан в богатой комплектации с комфортной подвеской и привычной эргономикой.",
+      "location": "city",
+      "is_visible": true,
+      "sort_order": 5,
+      "created_at": "2026-07-26T15:25:02+00:00",
+      "images": [
+        {
+          "id": 6,
+          "car_id": "toyota-camry-2022",
+          "url": "/demo/toyota-camry.png",
+          "alt_text": "Toyota Camry Prestige",
+          "sort_order": 0
+        }
+      ]
+    }
+  ]
+}

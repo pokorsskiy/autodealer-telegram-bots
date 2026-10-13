@@ -1,0 +1,10 @@
+/* Страницы политики и согласия: простой читаемый текст без оформления витрины. */
+body { margin: 0; background: #f6f6f4; color: #1d1f24; font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.legal { max-width: 720px; margin: 0 auto; padding: 28px 18px 48px; }
+.legal h1 { margin: 0 0 6px; font-size: 22px; line-height: 1.25; }
+.legal h2 { margin: 26px 0 8px; font-size: 16px; }
+.legal p, .legal li { margin: 0 0 10px; }
+.legal ul, .legal ol { margin: 0 0 10px; padding-left: 22px; }
+.legal a { color: #0b57d0; }
+.legal__meta { color: #6b6f78; font-size: 13px; }
+.legal__sample { margin: 0 0 18px; padding: 10px 12px; border-radius: 10px; background: #fff3cd; font-size: 13px; }

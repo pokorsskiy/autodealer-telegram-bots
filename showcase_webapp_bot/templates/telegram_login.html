@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Dealer Auto — вход в админку</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=20260929-3">
+  <script src="/vendor/telegram-web-app.js"></script>
+  <script src="/admin/telegram-login.js?v=20260929" defer></script>
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <span class="logo">DA</span>
+    <p class="eyebrow">Закрытая веб-админка</p>
+    <h1>Управление каталогом</h1>
+    <p class="muted" id="telegram-status">Входим через Telegram…</p>
+    <a class="login-link" id="password-login" href="/admin/login" hidden>Войти по паролю <span>→</span></a>
+  </main>
+</body>
+</html>
