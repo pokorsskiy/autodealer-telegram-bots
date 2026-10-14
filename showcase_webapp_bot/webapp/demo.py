@@ -65,11 +65,16 @@ DEMO_SANDBOX_MAX_CARS = 60
 DEMO_SANDBOX_MAX_PHOTOS = 40
 DEMO_SANDBOX_MAX_PHOTO_BYTES = 3 * 1024 * 1024
 DEMO_SANDBOX_WRITES_PER_MINUTE = 60
+# Запрос без cookie получает новую песочницу, поэтому новые песочницы считаются
+# по адресу посетителя, а все фото вместе ограничены, чтобы демо не заняло диск.
+DEMO_SANDBOX_NEW_PER_HOUR = 10
+DEMO_SANDBOX_MAX_TOTAL_BYTES = 500 * 1024 * 1024
 DEMO_CAR_TEXT_LIMITS = {
     "id": 80, "brand": 60, "model": 80, "body": 40, "drive": 40, "engine": 80,
     "power": 40, "location": 10, "description": 2000, "created_at": 40, "sold_at": 40,
 }
 demo_sandbox_writes: dict[str, deque[float]] = defaultdict(deque)
+demo_sandbox_created: dict[str, deque[float]] = defaultdict(deque)
 
 
 def _demo_config(slug: str) -> dict[str, Any] | None:
@@ -172,15 +177,29 @@ def _clean_sandbox_car(raw: Any, slug: str, box_url: str) -> dict[str, Any] | No
     return car
 
 
-def _sandbox_write_allowed(identity: str) -> bool:
+def _within_limit(attempts: deque[float], window: int, limit: int) -> bool:
     now = time.monotonic()
-    writes = demo_sandbox_writes[identity]
-    while writes and now - writes[0] > 60:
-        writes.popleft()
-    if len(writes) >= DEMO_SANDBOX_WRITES_PER_MINUTE:
+    while attempts and now - attempts[0] > window:
+        attempts.popleft()
+    if len(attempts) >= limit:
         return False
-    writes.append(now)
+    attempts.append(now)
     return True
+
+
+def _sandbox_write_allowed(identity: str, new_cookie: str | None) -> bool:
+    client_key = request.remote_addr or "unknown"
+    if new_cookie and not _within_limit(
+        demo_sandbox_created[client_key], 3600, DEMO_SANDBOX_NEW_PER_HOUR
+    ):
+        return False
+    return _within_limit(demo_sandbox_writes[identity], 60, DEMO_SANDBOX_WRITES_PER_MINUTE)
+
+
+def _sandboxes_size() -> int:
+    if not DEMO_SANDBOX_DIR.is_dir():
+        return 0
+    return sum(path.stat().st_size for path in DEMO_SANDBOX_DIR.rglob("*") if path.is_file())
 
 
 def _with_sandbox_cookie(response: Response, cookie: str | None) -> Response:
@@ -205,8 +224,8 @@ def _open_demo_for_sandbox(slug: str) -> dict[str, Any]:
 def demo_sandbox_save(slug: str):
     _open_demo_for_sandbox(slug)
     identity, cookie = _sandbox_identity(create=True)
-    if not _sandbox_write_allowed(identity):
-        return jsonify({"error": "Слишком много изменений подряд. Подождите минуту."}), 429
+    if not _sandbox_write_allowed(identity, cookie):
+        return jsonify({"error": "Слишком много изменений подряд. Попробуйте позже."}), 429
     payload = json_object()
     raw_cars = payload.get("cars")
     if not isinstance(raw_cars, list) or len(raw_cars) > DEMO_SANDBOX_MAX_CARS:
@@ -233,8 +252,12 @@ def demo_sandbox_reset(slug: str):
 def demo_sandbox_photos(slug: str):
     _open_demo_for_sandbox(slug)
     identity, cookie = _sandbox_identity(create=True)
-    if not _sandbox_write_allowed(identity):
-        return jsonify({"error": "Слишком много изменений подряд. Подождите минуту."}), 429
+    if not _sandbox_write_allowed(identity, cookie):
+        return jsonify({"error": "Слишком много изменений подряд. Попробуйте позже."}), 429
+    _purge_old_sandboxes()
+    if _sandboxes_size() + (request.content_length or 0) > DEMO_SANDBOX_MAX_TOTAL_BYTES:
+        logger.warning("Место под фото демо-песочниц закончилось")
+        return jsonify({"error": "Место для фото в демо временно закончилось. Попробуйте позже."}), 503
     box = _sandbox_dir(slug, identity)
     existing = len([p for p in box.glob("*") if p.name != "cars.json"]) if box.is_dir() else 0
     images = [file for file in request.files.getlist("image") if file and file.filename]

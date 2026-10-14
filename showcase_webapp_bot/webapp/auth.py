@@ -61,8 +61,22 @@ def get_csrf_token() -> str:
 def require_csrf() -> None:
     supplied = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
     expected = session.get("csrf_token")
-    if not supplied or not expected or not hmac.compare_digest(str(supplied), str(expected)):
+    if not supplied or not expected or not hmac.compare_digest(
+        str(supplied).encode(), str(expected).encode()
+    ):
         abort(403)
+
+
+def password_tag(admin: dict[str, Any]) -> str:
+    """Метка пароля в сессии: после смены пароля старые сессии перестают действовать."""
+    return hashlib.sha256(str(admin["password_hash"]).encode()).hexdigest()[:16]
+
+
+def start_session(admin: dict[str, Any]) -> None:
+    session.clear()
+    session["admin_id"] = int(admin["id"])
+    session["password_tag"] = password_tag(admin)
+    session["csrf_token"] = secrets.token_urlsafe(32)
 
 
 def current_admin() -> dict[str, Any] | None:
@@ -70,7 +84,7 @@ def current_admin() -> dict[str, Any] | None:
     if not isinstance(admin_id, int):
         return None
     admin = get_admin(admin_id)
-    if not admin or not admin["is_active"]:
+    if not admin or not admin["is_active"] or session.get("password_tag") != password_tag(admin):
         session.clear()
         return None
     return admin
@@ -140,7 +154,7 @@ def verify_init_data(init_data: str, max_age: int) -> dict[str, Any] | None:
         for variant in variants:
             check_string = "\n".join(f"{k}={v}" for k, v in sorted(variant.items()))
             expected = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
-            if hmac.compare_digest(expected, received_hash):
+            if hmac.compare_digest(expected.encode(), received_hash.encode()):
                 return user
     return None
 

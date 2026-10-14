@@ -1,5 +1,6 @@
 """Проверки каталога и закрытой веб-админки."""
 
+import csv
 import hashlib
 import hmac
 import io
@@ -33,6 +34,15 @@ from webapp import notifications as notifications_module
 from webapp import public as public_module
 
 
+def sign_in(client, admin_id: int, csrf_token: str) -> None:
+    """Сессия такая же, какую создаёт вход в админку."""
+    admin = database_module.get_admin(admin_id)
+    with client.session_transaction() as session:
+        session["admin_id"] = admin_id
+        session["password_tag"] = auth_module.password_tag(admin)
+        session["csrf_token"] = csrf_token
+
+
 class AdminServerTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -62,9 +72,7 @@ class AdminServerTest(unittest.TestCase):
 
     def login_owner(self) -> None:
         owner = database_module.get_admin_by_username("owner")
-        with self.client.session_transaction() as session:
-            session["admin_id"] = owner["id"]
-            session["csrf_token"] = "csrf-test"
+        sign_in(self.client, owner["id"], "csrf-test")
 
     def test_old_demo_photo_links_become_local(self) -> None:
         """Демо-фото из старых баз переезжают с чужих сайтов в web/demo/."""
@@ -170,9 +178,7 @@ class AdminServerTest(unittest.TestCase):
         manager_id = database_module.create_admin(
             "manager", generate_password_hash("very-long-test-password"), "manager"
         )
-        with self.client.session_transaction() as session:
-            session["admin_id"] = manager_id
-            session["csrf_token"] = "csrf-test"
+        sign_in(self.client, manager_id, "csrf-test")
         response = self.client.delete(
             "/api/admin/cars/toyota-camry-2024",
             headers={"X-CSRF-Token": "csrf-test"},
@@ -308,6 +314,25 @@ class PublicLeadTest(unittest.TestCase):
             response = self.client.post("/api/leads", json=self._payload())
         self.assertEqual(response.status_code, 429)
 
+    def test_flood_limit_counts_each_visitor_separately(self) -> None:
+        """За nginx все запросы приходят с 127.0.0.1: считать нужно адрес посетителя."""
+        with (
+            patch.object(public_module, "save_lead", return_value=1),
+            patch.object(public_module, "notify_lead", return_value=True),
+        ):
+            for _ in range(public_module.LEAD_MAX_PER_WINDOW):
+                self.client.post(
+                    "/api/leads", json=self._payload(), headers={"X-Forwarded-For": "203.0.113.1"}
+                )
+            flooder = self.client.post(
+                "/api/leads", json=self._payload(), headers={"X-Forwarded-For": "203.0.113.1"}
+            )
+            other = self.client.post(
+                "/api/leads", json=self._payload(), headers={"X-Forwarded-For": "203.0.113.2"}
+            )
+        self.assertEqual(flooder.status_code, 429)
+        self.assertEqual(other.status_code, 200)
+
     def test_undelivered_lead_is_still_accepted(self) -> None:
         """Telegram может быть недоступен: заявку всё равно не теряем."""
         with (
@@ -439,6 +464,7 @@ class DemoModeTest(unittest.TestCase):
             patch.object(demo_module, "DEMO_SANDBOX_DIR", Path(temp_dir) / "boxes")
         )
         demo_module.demo_sandbox_writes.clear()
+        demo_module.demo_sandbox_created.clear()
         return stack
 
     def test_sandbox_changes_are_seen_only_by_their_owner(self) -> None:
@@ -481,6 +507,34 @@ class DemoModeTest(unittest.TestCase):
         self.assertEqual(good.status_code, 201)
         self.assertRegex(url, r"^/demo-sandbox/acme/[0-9a-f]{32}/[0-9a-f]{16}\.jpg$")
         self.assertEqual(image.status_code, 200)
+
+    def test_new_sandboxes_are_limited_per_visitor(self) -> None:
+        # Без cookie каждый запрос — новая песочница, поэтому их считаем по адресу.
+        def save_without_cookie(address: str):
+            return server_module.app.test_client().put(
+                "/api/demos/acme/sandbox", json={"cars": []}, headers={"X-Forwarded-For": address}
+            )
+
+        limit = demo_module.DEMO_SANDBOX_NEW_PER_HOUR
+        with tempfile.TemporaryDirectory() as temp_dir, self._sandbox_demo(temp_dir):
+            allowed = [save_without_cookie("203.0.113.1").status_code for _ in range(limit)]
+            over_limit = save_without_cookie("203.0.113.1")
+            other = save_without_cookie("203.0.113.2")
+        self.assertEqual(allowed, [200] * limit)
+        self.assertEqual(over_limit.status_code, 429)
+        self.assertEqual(other.status_code, 200)
+
+    def test_sandbox_photos_stop_when_space_runs_out(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as temp_dir, self._sandbox_demo(temp_dir),
+            patch.object(demo_module, "DEMO_SANDBOX_MAX_TOTAL_BYTES", 1000),
+        ):
+            response = self.client.post(
+                "/api/demos/acme/sandbox/photos",
+                data={"image": (io.BytesIO(b"\xff\xd8\xff\xe0" + b"0" * 2000), "car.jpg")},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(response.status_code, 503)
 
     def test_sandbox_follows_telegram_account_across_mini_apps(self) -> None:
         # Каталог и админка — два мини-приложения без общей cookie: хозяина узнаём по аккаунту.
@@ -598,13 +652,12 @@ class LeadWorkflowTest(unittest.TestCase):
         database_module.init_db()
         self.client = server_module.app.test_client()
 
-    def _login_as(self, role: str) -> None:
+    def _login_as(self, role: str) -> int:
         admin_id = database_module.create_admin(
             f"user-{role}", generate_password_hash("password-12345"), role
         )
-        with self.client.session_transaction() as session:
-            session["admin_id"] = admin_id
-            session["csrf_token"] = "token"
+        sign_in(self.client, admin_id, "token")
+        return admin_id
 
     def _lead(self) -> int:
         return database_module.save_lead(
@@ -653,6 +706,26 @@ class LeadWorkflowTest(unittest.TestCase):
         response = self.client.get("/api/admin/leads.csv")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_data(as_text=True).startswith("\ufeff"))
+
+    def test_csv_export_does_not_turn_lead_fields_into_formulas(self) -> None:
+        database_module.save_lead(
+            0,
+            None,
+            {
+                "name": '=HYPERLINK("https://evil.example","Иван")',
+                "phone": "+79990000000", "car_interest": "Camry", "purchase_method": "Наличные",
+                "comment": "@SUM(1)", "lead_type": "car", "consent": "1", "username": "", "car_id": "",
+            },
+            source="site",
+        )
+        self._login_as("owner")
+        csv_text = self.client.get("/api/admin/leads.csv").get_data(as_text=True)
+        header, row = csv.reader(io.StringIO(csv_text.lstrip("﻿")), delimiter=";")
+        cells = dict(zip(header, row, strict=True))
+        self.assertEqual(cells["Имя"], '\'=HYPERLINK("https://evil.example","Иван")')
+        self.assertEqual(cells["Телефон"], "'+79990000000")
+        self.assertEqual(cells["Комментарий"], "'@SUM(1)")
+        self.assertEqual(cells["Автомобиль"], "Camry")
 
     def _post_user(self, username: str, role: str):
         return self.client.post(
@@ -703,6 +776,32 @@ class LeadWorkflowTest(unittest.TestCase):
             f"/api/admin/users/{manager_id}", headers={"X-CSRF-Token": "token"}
         )
         self.assertEqual(deleted.status_code, 204)
+
+    def test_password_change_ends_other_sessions(self) -> None:
+        manager_id = database_module.create_admin(
+            "manager1", generate_password_hash("password-12345"), "manager"
+        )
+        manager = server_module.app.test_client()
+        sign_in(manager, manager_id, "token")
+        self.assertEqual(manager.get("/api/admin/session").status_code, 200)
+        self._login_as("owner")
+        response = self.client.put(
+            f"/api/admin/users/{manager_id}",
+            json={"role": "manager", "is_active": True, "password": "new-password-12345"},
+            headers={"X-CSRF-Token": "token"},
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(manager.get("/api/admin/session").status_code, 401)
+
+    def test_own_password_change_keeps_current_session(self) -> None:
+        developer_id = self._login_as("developer")
+        response = self.client.put(
+            f"/api/admin/users/{developer_id}",
+            json={"role": "developer", "is_active": True, "password": "new-password-12345"},
+            headers={"X-CSRF-Token": "token"},
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(self.client.get("/api/admin/session").status_code, 200)
 
     def test_manager_cannot_manage_accounts(self) -> None:
         self._login_as("manager")
@@ -856,6 +955,7 @@ class TelegramLoginTest(unittest.TestCase):
             "устарели": signed_init_data("111:main-token", 555, int(time.time()) - 7200),
             "подделан ID": signed_init_data("111:main-token", 555).replace("555", "556"),
             "не данные Telegram": "hello",
+            "подпись не ASCII": signed_init_data("111:main-token", 555).split("&hash=")[0] + "&hash=%D1%84",
         }
         for name, init_data in cases.items():
             with self.subTest(name):
@@ -872,10 +972,26 @@ class TelegramLoginTest(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_login_requires_csrf(self) -> None:
+        init_data = signed_init_data("111:main-token", 555)
+        response = self.client.post("/admin/tg", json={"init_data": init_data})
+        self.assertEqual(response.status_code, 403)
         response = self.client.post(
-            "/admin/tg", json={"init_data": signed_init_data("111:main-token", 555)}
+            "/admin/tg", json={"init_data": init_data}, headers={"X-CSRF-Token": "é"}
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_password_guessing_does_not_lock_out_other_visitors(self) -> None:
+        def password_login(password: str, address: str):
+            return self.client.post(
+                "/admin/login",
+                data={"csrf_token": "csrf-test", "username": "owner", "password": password},
+                headers={"X-Forwarded-For": address},
+            )
+
+        for _ in range(auth_module.LOGIN_MAX_ATTEMPTS):
+            password_login("wrong-password", "203.0.113.1")
+        self.assertEqual(password_login("wrong-password", "203.0.113.1").status_code, 429)
+        self.assertEqual(password_login("very-long-test-password", "203.0.113.2").status_code, 302)
 
 
 class BotLeadTest(unittest.TestCase):
@@ -927,4 +1043,8 @@ class BotLeadTest(unittest.TestCase):
         self.assertEqual(self.send(token="333:other-token").status_code, 403)
         self.assertEqual(self.send(sent_at=int(time.time()) - 3600).status_code, 403)
         self.assertEqual(self.send(lead={"name": "И"}).status_code, 400)
+        not_ascii = self.client.post(
+            "/api/bot/leads", json={}, headers={"X-Bot-Signature": "é"}
+        )
+        self.assertEqual(not_ascii.status_code, 403)
         self.assertEqual(database_module.list_leads(), [])

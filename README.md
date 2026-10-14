@@ -24,7 +24,7 @@
 
 Python 3.10+, pyTelegramBotAPI, Flask, SQLite, gunicorn, nginx, systemd.
 Фронтенд каталога и админки — HTML, CSS и JavaScript без сборки и фреймворков.
-Тесты — `unittest`, 121 тест без обращений к Telegram; линтер — ruff; CI — GitHub Actions.
+Тесты — `unittest`, 128 тестов без обращений к Telegram; линтер — ruff; CI — GitHub Actions.
 
 ## Как устроено
 

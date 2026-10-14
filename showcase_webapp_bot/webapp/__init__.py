@@ -7,6 +7,7 @@
 import secrets
 
 from flask import Flask, jsonify, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash
 
 import config
@@ -86,6 +87,9 @@ def create_app() -> Flask:
         logger.warning("SECRET_KEY не задан: при перезапуске сервера все сессии админки завершатся")
 
     app = Flask(__name__, template_folder=str(TEMPLATES_DIR))
+    # Сервер стоит за nginx: без этого remote_addr у всех посетителей 127.0.0.1,
+    # и ограничения попыток входа и заявок срабатывали бы на всех сразу.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
     app.config.update(
         SECRET_KEY=config.SECRET_KEY or secrets.token_hex(32),
         MAX_CONTENT_LENGTH=config.MAX_UPLOAD_MB * 1024 * 1024,

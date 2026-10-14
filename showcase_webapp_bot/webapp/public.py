@@ -166,10 +166,10 @@ def bot_lead():
     if config.DEMO_MODE:
         return jsonify({"error": "Это демо: заявки не принимаются."}), 403
     body = request.get_data()
-    signature = request.headers.get("X-Bot-Signature", "")
+    signature = request.headers.get("X-Bot-Signature", "").encode()
     if not any(
         hmac.compare_digest(
-            hmac.new(token.encode(), body, hashlib.sha256).hexdigest(), signature
+            hmac.new(token.encode(), body, hashlib.sha256).hexdigest().encode(), signature
         )
         for token in config.ADMIN_EXTRA_BOT_TOKENS
     ):

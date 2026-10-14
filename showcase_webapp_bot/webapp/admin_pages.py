@@ -1,7 +1,5 @@
 """Страницы админки: вход по паролю и из Telegram, панель, демо-панель."""
 
-import secrets
-
 from flask import (
     Blueprint,
     abort,
@@ -27,6 +25,7 @@ from webapp.auth import (
     owner_setup_error,
     record_failed_login,
     require_csrf,
+    start_session,
     telegram_user_id,
 )
 from webapp.public import WEB_DIR
@@ -58,9 +57,7 @@ def admin_login():
             and admin["is_active"]
             and check_password_hash(admin["password_hash"], password)
         ):
-            session.clear()
-            session["admin_id"] = int(admin["id"])
-            session["csrf_token"] = secrets.token_urlsafe(32)
+            start_session(admin)
             login_attempts.pop(client_key, None)
             return redirect(url_for("admin.admin_panel"))
         record_failed_login(client_key)
@@ -98,9 +95,7 @@ def admin_telegram_login():
         logger.warning("Отказ во входе в админку из Telegram, ID %s", telegram_id)
         return jsonify({"error": "Для этого Telegram-аккаунта вход без пароля не открыт."}), 403
 
-    session.clear()
-    session["admin_id"] = int(admin["id"])
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    start_session(admin)
     login_attempts.pop(client_key, None)
     return jsonify({"ok": True, "redirect": url_for("admin.admin_panel")})
 

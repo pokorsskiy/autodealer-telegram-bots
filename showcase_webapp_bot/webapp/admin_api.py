@@ -5,8 +5,9 @@ import io
 import secrets
 import sqlite3
 from pathlib import Path
+from typing import Any
 
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, request, session
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -42,6 +43,7 @@ from webapp.auth import (
     get_csrf_token,
     log_admin_action,
     login_required,
+    password_tag,
     require_csrf,
 )
 from webapp.validation import (
@@ -53,6 +55,16 @@ from webapp.validation import (
 )
 
 bp = Blueprint("admin_api", __name__)
+
+# Ячейку с такого символа Excel считает формулой: имя «=HYPERLINK(...)» из формы
+# заявки сработало бы у менеджера. Апостроф делает ячейку текстом.
+CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_cell(value: Any) -> Any:
+    if isinstance(value, str) and value.startswith(CSV_FORMULA_PREFIXES):
+        return "'" + value
+    return value
 
 
 def _remove_local_upload(url: str | None) -> None:
@@ -128,17 +140,16 @@ def admin_leads_csv():
         ]
     )
     for lead in list_leads(limit=5000):
-        writer.writerow(
-            [
-                lead["id"], lead["created_at"], lead["source"], lead["status"],
-                lead["name"], lead["phone"],
-                lead["contact_username"] or lead["username"] or "",
-                lead["lead_type"], lead["car_interest"], lead["purchase_method"],
-                lead["comment"] or "", lead["note"],
-                "да" if lead["is_archived"] else "",
-                lead["consent_at"],
-            ]
-        )
+        row = [
+            lead["id"], lead["created_at"], lead["source"], lead["status"],
+            lead["name"], lead["phone"],
+            lead["contact_username"] or lead["username"] or "",
+            lead["lead_type"], lead["car_interest"], lead["purchase_method"],
+            lead["comment"] or "", lead["note"],
+            "да" if lead["is_archived"] else "",
+            lead["consent_at"],
+        ]
+        writer.writerow([_csv_cell(value) for value in row])
     log_admin_action("Выгрузил заявки")
     # BOM: без него Excel открывает кириллицу в CSV как набор символов.
     data = "﻿" + buffer.getvalue()
@@ -357,6 +368,9 @@ def admin_update_user(admin_id: int):
         role=role,
         is_active=is_active,
     )
+    if admin_id == current["id"]:
+        # Остальные сессии со старым паролем закрываются, текущая остаётся.
+        session["password_tag"] = password_tag(get_admin(admin_id))
     log_admin_action("Изменил учётную запись", str(target["username"]), role)
     return "", 204
 
